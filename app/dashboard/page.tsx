@@ -121,7 +121,7 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="flex h-16 items-center justify-between border-b px-6">
         <h1 className="text-lg font-semibold">Dashboard</h1>
-        <Link href="/dashboard/pos">
+        <Link href="/pos">
           <Button className="h-9 gap-2 rounded-xl bg-blue-600 text-sm font-medium hover:bg-blue-700">
             <Plus className="size-4" />
             New Order
