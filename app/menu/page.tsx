@@ -440,7 +440,7 @@ export default function MenuRecipePage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b px-4 pt-2 sm:px-6">
-          <TabsList className="h-9 rounded-none bg-transparent p-0 overflow-x-auto">
+          <TabsList className="h-9 rounded-none bg-transparent p-0 flex-wrap">
             <TabsTrigger
               value="recipe"
               className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"

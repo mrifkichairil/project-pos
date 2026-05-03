@@ -16,6 +16,7 @@ import {
   Boxes,
   Receipt,
   ArrowLeftRight,
+  X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -56,21 +57,97 @@ export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("ingredients");
 
-  const filteredIngredients = ingredients.filter((i) =>
+  const [ingredientsData, setIngredientsData] = useState(ingredients);
+  const [purchasesData, setPurchasesData] = useState(purchases);
+  const [movementsData, setMovementsData] = useState(stockMovements);
+
+  const [showAddIngredient, setShowAddIngredient] = useState(false);
+  const [showAddPurchase, setShowAddPurchase] = useState(false);
+  const [showAddMovement, setShowAddMovement] = useState(false);
+
+  const [newIngredient, setNewIngredient] = useState({ name: "", unit: "", price: "", supplier: "", stock: "", minStock: "" });
+  const [newPurchase, setNewPurchase] = useState({ item: "", qty: "", unit: "", price: "", supplier: "", date: "" });
+  const [newMovement, setNewMovement] = useState({ item: "", type: "in" as "in" | "out", qty: "", unit: "", ref: "", user: "" });
+
+  const filteredIngredients = ingredientsData.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
     i.supplier.toLowerCase().includes(search.toLowerCase())
   );
 
-  const lowStock = ingredients.filter((i) => i.stock <= i.minStock);
+  const lowStock = ingredientsData.filter((i) => i.stock <= i.minStock);
+
+  const handleAddIngredient = () => {
+    if (!newIngredient.name || !newIngredient.unit || !newIngredient.price) return;
+    const id = Math.max(...ingredientsData.map(i => i.id), 0) + 1;
+    setIngredientsData([...ingredientsData, {
+      id,
+      name: newIngredient.name,
+      unit: newIngredient.unit,
+      price: Number(newIngredient.price),
+      supplier: newIngredient.supplier,
+      stock: Number(newIngredient.stock) || 0,
+      minStock: Number(newIngredient.minStock) || 0,
+    }]);
+    setNewIngredient({ name: "", unit: "", price: "", supplier: "", stock: "", minStock: "" });
+    setShowAddIngredient(false);
+  };
+
+  const handleAddPurchase = () => {
+    if (!newPurchase.item || !newPurchase.qty || !newPurchase.price) return;
+    const id = `PO-2026-${String(purchasesData.length + 1).padStart(3, "0")}`;
+    const qty = Number(newPurchase.qty);
+    const price = Number(newPurchase.price);
+    setPurchasesData([...purchasesData, {
+      id,
+      date: newPurchase.date || new Date().toLocaleDateString("id-ID"),
+      item: newPurchase.item,
+      qty,
+      unit: newPurchase.unit || "pcs",
+      price,
+      total: qty * price,
+      supplier: newPurchase.supplier || "-",
+    }]);
+    setNewPurchase({ item: "", qty: "", unit: "", price: "", supplier: "", date: "" });
+    setShowAddPurchase(false);
+  };
+
+  const handleAddMovement = () => {
+    if (!newMovement.item || !newMovement.qty) return;
+    const id = `MV-${String(movementsData.length + 1).padStart(3, "0")}`;
+    setMovementsData([...movementsData, {
+      id,
+      date: new Date().toLocaleDateString("id-ID"),
+      item: newMovement.item,
+      type: newMovement.type,
+      qty: Number(newMovement.qty),
+      unit: newMovement.unit || "pcs",
+      ref: newMovement.ref || "-",
+      user: newMovement.user || "Admin",
+    }]);
+    setNewMovement({ item: "", type: "in", qty: "", unit: "", ref: "", user: "" });
+    setShowAddMovement(false);
+  };
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <header className="flex h-16 items-center justify-between border-b px-4 sm:px-6">
         <h1 className="text-base font-semibold sm:text-lg">Inventory</h1>
-        <Button className="h-8 gap-2 rounded-xl bg-blue-600 px-3 text-xs font-medium hover:bg-blue-700 sm:h-9 sm:px-4 sm:text-sm">
+        <Button
+          className="h-8 gap-2 rounded-xl bg-blue-600 px-3 text-xs font-medium hover:bg-blue-700 sm:h-9 sm:px-4 sm:text-sm"
+          onClick={() => {
+            if (activeTab === "ingredients") setShowAddIngredient(true);
+            else if (activeTab === "purchase") setShowAddPurchase(true);
+            else if (activeTab === "movement") setShowAddMovement(true);
+          }}
+        >
           <Plus className="size-3.5 sm:size-4" />
-          <span className="hidden sm:inline">Add Ingredient</span>
+          <span className="hidden sm:inline">
+            {activeTab === "ingredients" && "Add Ingredient"}
+            {activeTab === "purchase" && "Add Purchase"}
+            {activeTab === "movement" && "Add Movement"}
+            {activeTab === "stock" && "Restock"}
+          </span>
           <span className="sm:hidden">Add</span>
         </Button>
       </header>
@@ -78,7 +155,7 @@ export default function InventoryPage() {
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
         <div className="border-b px-4 pt-2 sm:px-6">
-          <TabsList className="h-9 rounded-none bg-transparent p-0 overflow-x-auto">
+          <TabsList className="h-9 rounded-none bg-transparent p-0 flex-wrap">
             <TabsTrigger
               value="ingredients"
               className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
@@ -259,7 +336,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {purchases.map((p) => (
+                    {purchasesData.map((p) => (
                       <tr key={p.id}>
                         <td className="py-2.5 font-medium">{p.id}</td>
                         <td className="py-2.5 text-muted-foreground">{p.date}</td>
@@ -298,7 +375,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {stockMovements.map((m) => (
+                    {movementsData.map((m) => (
                       <tr key={m.id}>
                         <td className="py-2.5 font-medium">{m.id}</td>
                         <td className="py-2.5 text-muted-foreground">{m.date}</td>
@@ -336,6 +413,97 @@ export default function InventoryPage() {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Add Ingredient Modal */}
+      {showAddIngredient && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Add Ingredient</h2>
+              <button onClick={() => setShowAddIngredient(false)} className="rounded-lg p-1 hover:bg-muted">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <Input placeholder="Name" value={newIngredient.name} onChange={(e) => setNewIngredient({ ...newIngredient, name: e.target.value })} />
+              <Input placeholder="Unit (e.g. gram, ml, pcs)" value={newIngredient.unit} onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })} />
+              <Input placeholder="Price" type="number" value={newIngredient.price} onChange={(e) => setNewIngredient({ ...newIngredient, price: e.target.value })} />
+              <Input placeholder="Supplier" value={newIngredient.supplier} onChange={(e) => setNewIngredient({ ...newIngredient, supplier: e.target.value })} />
+              <Input placeholder="Stock" type="number" value={newIngredient.stock} onChange={(e) => setNewIngredient({ ...newIngredient, stock: e.target.value })} />
+              <Input placeholder="Min Stock" type="number" value={newIngredient.minStock} onChange={(e) => setNewIngredient({ ...newIngredient, minStock: e.target.value })} />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddIngredient(false)}>Cancel</Button>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleAddIngredient}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Purchase Modal */}
+      {showAddPurchase && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Add Purchase</h2>
+              <button onClick={() => setShowAddPurchase(false)} className="rounded-lg p-1 hover:bg-muted">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <Input placeholder="Item Name" value={newPurchase.item} onChange={(e) => setNewPurchase({ ...newPurchase, item: e.target.value })} />
+              <Input placeholder="Quantity" type="number" value={newPurchase.qty} onChange={(e) => setNewPurchase({ ...newPurchase, qty: e.target.value })} />
+              <Input placeholder="Unit" value={newPurchase.unit} onChange={(e) => setNewPurchase({ ...newPurchase, unit: e.target.value })} />
+              <Input placeholder="Price per Unit" type="number" value={newPurchase.price} onChange={(e) => setNewPurchase({ ...newPurchase, price: e.target.value })} />
+              <Input placeholder="Supplier" value={newPurchase.supplier} onChange={(e) => setNewPurchase({ ...newPurchase, supplier: e.target.value })} />
+              <Input placeholder="Date (optional)" value={newPurchase.date} onChange={(e) => setNewPurchase({ ...newPurchase, date: e.target.value })} />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddPurchase(false)}>Cancel</Button>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleAddPurchase}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Add Stock Movement Modal */}
+      {showAddMovement && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold">Add Stock Movement</h2>
+              <button onClick={() => setShowAddMovement(false)} className="rounded-lg p-1 hover:bg-muted">
+                <X className="size-4" />
+              </button>
+            </div>
+            <div className="space-y-3">
+              <Input placeholder="Item Name" value={newMovement.item} onChange={(e) => setNewMovement({ ...newMovement, item: e.target.value })} />
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setNewMovement({ ...newMovement, type: "in" })}
+                  className={cn("flex-1 rounded-lg border py-2 text-sm font-medium", newMovement.type === "in" ? "border-emerald-200 bg-emerald-50 text-emerald-600" : "")}
+                >
+                  In (Masuk)
+                </button>
+                <button
+                  onClick={() => setNewMovement({ ...newMovement, type: "out" })}
+                  className={cn("flex-1 rounded-lg border py-2 text-sm font-medium", newMovement.type === "out" ? "border-red-200 bg-red-50 text-red-600" : "")}
+                >
+                  Out (Keluar)
+                </button>
+              </div>
+              <Input placeholder="Quantity" type="number" value={newMovement.qty} onChange={(e) => setNewMovement({ ...newMovement, qty: e.target.value })} />
+              <Input placeholder="Unit" value={newMovement.unit} onChange={(e) => setNewMovement({ ...newMovement, unit: e.target.value })} />
+              <Input placeholder="Reference" value={newMovement.ref} onChange={(e) => setNewMovement({ ...newMovement, ref: e.target.value })} />
+              <Input placeholder="User" value={newMovement.user} onChange={(e) => setNewMovement({ ...newMovement, user: e.target.value })} />
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => setShowAddMovement(false)}>Cancel</Button>
+              <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleAddMovement}>Save</Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
