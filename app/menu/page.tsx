@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import {
   Plus,
   Search,
@@ -415,7 +414,7 @@ function calcMargin(hpp: number, price: number) {
 
 export default function MenuRecipePage() {
   const [search, setSearch] = useState("");
-  const [activeTab, setActiveTab] = useState("recipe");
+  const [activeTab, setActiveTab] = useState<"recipe" | "pricing">("recipe");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
@@ -531,23 +530,30 @@ export default function MenuRecipePage() {
       </header>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-1 flex-col overflow-hidden">
-        <div className="border-b px-4 pt-2 sm:px-6">
-          <TabsList className="h-9 rounded-none bg-transparent p-0 flex-wrap">
-            <TabsTrigger
-              value="recipe"
-              className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
-            >
-              <BookOpen className="mr-1.5 size-3.5" /> Recipe (BOM)
-            </TabsTrigger>
-            <TabsTrigger
-              value="pricing"
-              className="rounded-none border-b-2 border-transparent px-3 pb-2 pt-1 text-xs font-medium data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none sm:text-sm"
-            >
-              <Receipt className="mr-1.5 size-3.5" /> Menu Pricing
-            </TabsTrigger>
-          </TabsList>
-        </div>
+      <div className="flex gap-1 border-b px-4 pt-4 sm:px-6">
+        <button
+          onClick={() => setActiveTab("recipe")}
+          className={cn(
+            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
+            activeTab === "recipe"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          Recipe (BOM)
+        </button>
+        <button
+          onClick={() => setActiveTab("pricing")}
+          className={cn(
+            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
+            activeTab === "pricing"
+              ? "bg-primary/10 text-primary"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+          )}
+        >
+          Menu Pricing
+        </button>
+      </div>
 
         {/* Search */}
         <div className="px-4 pt-4 sm:px-6">
@@ -563,241 +569,244 @@ export default function MenuRecipePage() {
         </div>
 
         <div className="flex-1 overflow-y-auto">
-          {/* ─── Recipe / BOM ─── */}
-          <TabsContent value="recipe" className="m-0 h-full">
-            <div className="flex h-full overflow-hidden">
-              {/* Left — Recipe Cards */}
-              <div className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6">
-                <p className="mb-3 text-xs text-muted-foreground">Showing {filteredRecipes.length} recipes</p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                  {filteredRecipes.map((recipe) => {
-                    const hpp = calcHPP(recipe.ingredients);
-                    return (
-                      <Card
-                        key={recipe.id}
-                        onClick={() => { setSelectedRecipe(recipe); setSidebarOpen(true); }}
-                        className={`cursor-pointer border-border/60 transition-colors hover:border-primary/30 hover:shadow-sm ${
-                          selectedRecipe?.id === recipe.id ? "border-primary bg-primary/5" : ""
-                        }`}
-                      >
-                        <CardContent className="flex items-center gap-3 p-3">
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-                            <Calculator className="size-4 text-primary" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-semibold">{recipe.name}</p>
-                            <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
-                              <span>{recipe.category}</span>
-                              <span>· {recipe.ingredients.length} ingredients</span>
-                            </div>
-                          </div>
-                          <div className="shrink-0 text-right">
-                            <p className="text-[10px] text-muted-foreground">HPP</p>
-                            <p className="text-sm font-bold">{formatRp(hpp)}</p>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Mobile Overlay */}
-              {selectedRecipe && (
-                <div
-                  className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-                  onClick={() => setSidebarOpen(false)}
-                />
-              )}
-              {/* Right — Recipe Detail Sidebar */}
-              <aside
-                className={cn(
-                  "w-[32rem] shrink-0 overflow-y-auto border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-300 lg:static lg:translate-x-0 lg:z-auto",
-                  sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
-                )}
-              >
-                {selectedRecipe ? (
-                  <div className="p-4 sm:p-6">
-                    {/* Header */}
-                    <div className="mb-6 flex items-center gap-3">
-                      <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
-                        <Calculator className="size-6 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2">
-                          <p className="text-base font-bold">{selectedRecipe.name}</p>
-                          <Badge variant="outline" className="text-[10px] border-slate-200 bg-slate-50 text-slate-700">
-                            {selectedRecipe.category}
-                          </Badge>
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">{selectedRecipe.ingredients.length} ingredients · HPP {formatRp(calcHPP(selectedRecipe.ingredients))}</p>
-                      </div>
-                      <button
-                        onClick={() => setSidebarOpen(false)}
-                        className="lg:hidden flex size-8 items-center justify-center rounded-lg border"
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </div>
-
-                    {/* BOM Table */}
-                    <div>
-                      <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill of Materials</h3>
-                      <div className="overflow-x-auto rounded-lg border border-border/60">
-                        <table className="w-full text-left text-xs min-w-125">
-                          <thead>
-                            <tr className="border-b border-border/60 bg-muted/50 text-muted-foreground">
-                              <th className="px-3 py-2.5 font-medium">Bahan</th>
-                              <th className="px-3 py-2.5 font-medium">Supplier</th>
-                              <th className="w-16 px-3 py-2.5 font-medium text-center">Qty</th>
-                              <th className="w-12 px-3 py-2.5 font-medium text-center">Unit</th>
-                              <th className="w-24 px-3 py-2.5 font-medium text-right">Price</th>
-                              <th className="w-24 px-3 py-2.5 font-medium text-right">Subtotal</th>
-                              <th className="w-16 px-3 py-2.5 font-medium text-right">Cost%</th>
-                              <th className="w-20 px-3 py-2.5 font-medium text-right">Stock</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-border/60">
-                            {(() => {
-                              const hpp = calcHPP(selectedRecipe.ingredients);
-                              return selectedRecipe.ingredients.map((ing) => {
-                                const ip = ingredientPrices[ing.name];
-                                const subtotal = (ip?.price ?? 0) * ing.qty;
-                                const costPct = hpp > 0 ? (subtotal / hpp) * 100 : 0;
-                                return (
-                                  <tr key={ing.name} className="hover:bg-muted/30">
-                                    <td className="px-3 py-2.5 font-medium">{ing.name}</td>
-                                    <td className="px-3 py-2.5 text-muted-foreground">{ip?.supplier ?? "-"}</td>
-                                    <td className="px-3 py-2.5 text-center text-muted-foreground">{ing.qty}</td>
-                                    <td className="px-3 py-2.5 text-center text-muted-foreground">{ing.unit}</td>
-                                    <td className="px-3 py-2.5 text-right text-muted-foreground">{ip ? formatRp(ip.price) + "/" + ip.unit : "-"}</td>
-                                    <td className="px-3 py-2.5 text-right font-semibold">{formatRp(subtotal)}</td>
-                                    <td className="px-3 py-2.5 text-right text-muted-foreground">{costPct.toFixed(1)}%</td>
-                                    <td className="px-3 py-2.5 text-right text-muted-foreground">{ip?.stock?.toLocaleString("id-ID") ?? "-"}</td>
-                                  </tr>
-                                );
-                              });
-                            })()}
-                            <tr className="border-t-2 border-border/60 bg-muted/50">
-                              <td colSpan={7} className="px-3 py-2.5 text-left">
-                                <span className="text-xs font-semibold text-muted-foreground">Total HPP:</span>
-                                <span className="ml-2 text-sm font-bold">{formatRp(calcHPP(selectedRecipe.ingredients))}</span>
-                              </td>
-                              <td colSpan={1}></td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
-                    Select a recipe to view BOM details
-                  </div>
-                )}
-              </aside>
-            </div>
-          </TabsContent>
-
-          {/* ─── Menu Pricing ─── */}
-          <TabsContent value="pricing" className="m-0 p-4 sm:p-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-semibold">Menu Pricing & Margin</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-125 text-left text-xs">
-                  <thead>
-                    <tr className="border-b text-muted-foreground">
-                      <th className="pb-2 font-medium">Menu</th>
-                      <th className="pb-2 font-medium">Category</th>
-                      <th className="pb-2 font-medium">HPP</th>
-                      <th className="pb-2 font-medium">Harga Jual</th>
-                      <th className="pb-2 font-medium">Margin</th>
-                      <th className="pb-2 font-medium">Keuntungan</th>
-                      <th className="pb-2 font-medium">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {paginatedProducts.map((p) => {
-                      const margin = calcMargin(p.hpp, p.price);
-                      const profit = p.price - p.hpp;
-                      const isHealthy = margin >= 100;
+          {activeTab === "recipe" ? (
+            <>
+              {/* ─── Recipe / BOM ─── */}
+              <div className="flex h-full overflow-hidden">
+                {/* Left — Recipe Cards */}
+                <div className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6">
+                  <p className="mb-3 text-xs text-muted-foreground">Showing {filteredRecipes.length} recipes</p>
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                    {filteredRecipes.map((recipe) => {
+                      const hpp = calcHPP(recipe.ingredients);
                       return (
-                        <tr key={p.id}>
-                          <td className="py-2.5 font-medium">{p.name}</td>
-                          <td className="py-2.5 text-muted-foreground">{p.category}</td>
-                          <td className="py-2.5">{formatRp(p.hpp)}</td>
-                          <td className="py-2.5 font-semibold">{formatRp(p.price)}</td>
-                          <td className="py-2.5">
-                            <span className={cn("flex items-center gap-1 font-semibold", isHealthy ? "text-emerald-600" : "text-amber-600")}>
-                              <TrendingUp className="size-3" />
-                              {margin.toFixed(0)}%
-                            </span>
-                          </td>
-                          <td className="py-2.5 font-semibold text-emerald-600">{formatRp(profit)}</td>
-                          <td className="py-2.5">
-                            {isHealthy ? (
-                              <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-600 text-[10px]">
-                                Healthy
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-600 text-[10px]">
-                                Review
-                              </Badge>
-                            )}
-                          </td>
-                        </tr>
+                        <Card
+                          key={recipe.id}
+                          onClick={() => { setSelectedRecipe(recipe); setSidebarOpen(true); }}
+                          className={`cursor-pointer border-border/60 transition-colors hover:border-primary/30 hover:shadow-sm ${
+                            selectedRecipe?.id === recipe.id ? "border-primary bg-primary/5" : ""
+                          }`}
+                        >
+                          <CardContent className="flex items-center gap-3 p-3">
+                            <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                              <Calculator className="size-4 text-primary" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-semibold">{recipe.name}</p>
+                              <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted-foreground">
+                                <span>{recipe.category}</span>
+                                <span>· {recipe.ingredients.length} ingredients</span>
+                              </div>
+                            </div>
+                            <div className="shrink-0 text-right">
+                              <p className="text-[10px] text-muted-foreground">HPP</p>
+                              <p className="text-sm font-bold">{formatRp(hpp)}</p>
+                            </div>
+                          </CardContent>
+                        </Card>
                       );
                     })}
-                  </tbody>
-                </table>
-                </div>
-                {/* Pagination */}
-                {filteredProducts.length > pricingPerPage && (
-                  <div className="mt-4 flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      Showing {(pricingPage - 1) * pricingPerPage + 1}–{Math.min(pricingPage * pricingPerPage, filteredProducts.length)} of {filteredProducts.length}
-                    </span>
-                    <div className="flex items-center gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        disabled={pricingPage <= 1}
-                        onClick={() => setPricingPage(pricingPage - 1)}
-                      >
-                        <ChevronLeft className="size-3.5" />
-                      </Button>
-                      {Array.from({ length: pricingTotalPages }, (_, i) => i + 1).map((page) => (
-                        <Button
-                          key={page}
-                          variant={pricingPage === page ? "default" : "outline"}
-                          size="sm"
-                          className={cn("h-7 min-w-[28px] px-1.5 text-xs", pricingPage === page ? "bg-blue-600 hover:bg-blue-700" : "")}
-                          onClick={() => setPricingPage(page)}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 w-7 p-0"
-                        disabled={pricingPage >= pricingTotalPages}
-                        onClick={() => setPricingPage(pricingPage + 1)}
-                      >
-                        <ChevronRight className="size-3.5" />
-                      </Button>
-                    </div>
                   </div>
+                </div>
+
+                {/* Mobile Overlay */}
+                {selectedRecipe && (
+                  <div
+                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                  />
                 )}
-              </CardContent>
-            </Card>
-          </TabsContent>
+                {/* Right — Recipe Detail Sidebar */}
+                <aside
+                  className={cn(
+                    "w-[32rem] shrink-0 overflow-y-auto border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-300 lg:static lg:translate-x-0 lg:z-auto",
+                    sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+                  )}
+                >
+                  {selectedRecipe ? (
+                    <div className="p-4 sm:p-6">
+                      {/* Header */}
+                      <div className="mb-6 flex items-center gap-3">
+                        <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
+                          <Calculator className="size-6 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <p className="text-base font-bold">{selectedRecipe.name}</p>
+                            <Badge variant="outline" className="text-[10px] border-slate-200 bg-slate-50 text-slate-700">
+                              {selectedRecipe.category}
+                            </Badge>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">{selectedRecipe.ingredients.length} ingredients · HPP {formatRp(calcHPP(selectedRecipe.ingredients))}</p>
+                        </div>
+                        <button
+                          onClick={() => setSidebarOpen(false)}
+                          className="lg:hidden flex size-8 items-center justify-center rounded-lg border"
+                        >
+                          <X className="size-4" />
+                        </button>
+                      </div>
+
+                      {/* BOM Table */}
+                      <div>
+                        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill of Materials</h3>
+                        <div className="overflow-x-auto rounded-lg border border-border/60">
+                          <table className="w-full text-left text-xs min-w-125">
+                            <thead>
+                              <tr className="border-b border-border/60 bg-muted/50 text-muted-foreground">
+                                <th className="px-3 py-2.5 font-medium">Bahan</th>
+                                <th className="px-3 py-2.5 font-medium">Supplier</th>
+                                <th className="w-16 px-3 py-2.5 font-medium text-center">Qty</th>
+                                <th className="w-12 px-3 py-2.5 font-medium text-center">Unit</th>
+                                <th className="w-24 px-3 py-2.5 font-medium text-right">Price</th>
+                                <th className="w-24 px-3 py-2.5 font-medium text-right">Subtotal</th>
+                                <th className="w-16 px-3 py-2.5 font-medium text-right">Cost%</th>
+                                <th className="w-20 px-3 py-2.5 font-medium text-right">Stock</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-border/60">
+                              {(() => {
+                                const hpp = calcHPP(selectedRecipe.ingredients);
+                                return selectedRecipe.ingredients.map((ing) => {
+                                  const ip = ingredientPrices[ing.name];
+                                  const subtotal = (ip?.price ?? 0) * ing.qty;
+                                  const costPct = hpp > 0 ? (subtotal / hpp) * 100 : 0;
+                                  return (
+                                    <tr key={ing.name} className="hover:bg-muted/30">
+                                      <td className="px-3 py-2.5 font-medium">{ing.name}</td>
+                                      <td className="px-3 py-2.5 text-muted-foreground">{ip?.supplier ?? "-"}</td>
+                                      <td className="px-3 py-2.5 text-center text-muted-foreground">{ing.qty}</td>
+                                      <td className="px-3 py-2.5 text-center text-muted-foreground">{ing.unit}</td>
+                                      <td className="px-3 py-2.5 text-right text-muted-foreground">{ip ? formatRp(ip.price) + "/" + ip.unit : "-"}</td>
+                                      <td className="px-3 py-2.5 text-right font-semibold">{formatRp(subtotal)}</td>
+                                      <td className="px-3 py-2.5 text-right text-muted-foreground">{costPct.toFixed(1)}%</td>
+                                      <td className="px-3 py-2.5 text-right text-muted-foreground">{ip?.stock?.toLocaleString("id-ID") ?? "-"}</td>
+                                    </tr>
+                                  );
+                                });
+                              })()}
+                              <tr className="border-t-2 border-border/60 bg-muted/50">
+                                <td colSpan={7} className="px-3 py-2.5 text-left">
+                                  <span className="text-xs font-semibold text-muted-foreground">Total HPP:</span>
+                                  <span className="ml-2 text-sm font-bold">{formatRp(calcHPP(selectedRecipe.ingredients))}</span>
+                                </td>
+                                <td colSpan={1}></td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                      Select a recipe to view BOM details
+                    </div>
+                  )}
+                </aside>
+              </div>
+            </>
+          ) : (
+            <>
+              {/* ─── Menu Pricing ─── */}
+              <div className="p-4 sm:p-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-semibold">Menu Pricing & Margin</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="overflow-x-auto">
+                      <table className="w-full min-w-125 text-left text-xs">
+                      <thead>
+                        <tr className="border-b text-muted-foreground">
+                          <th className="pb-2 font-medium">Menu</th>
+                          <th className="pb-2 font-medium">Category</th>
+                          <th className="pb-2 font-medium">HPP</th>
+                          <th className="pb-2 font-medium">Harga Jual</th>
+                          <th className="pb-2 font-medium">Margin</th>
+                          <th className="pb-2 font-medium">Keuntungan</th>
+                          <th className="pb-2 font-medium">Status</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y">
+                        {paginatedProducts.map((p) => {
+                          const margin = calcMargin(p.hpp, p.price);
+                          const profit = p.price - p.hpp;
+                          const isHealthy = margin >= 100;
+                          return (
+                            <tr key={p.id}>
+                              <td className="py-2.5 font-medium">{p.name}</td>
+                              <td className="py-2.5 text-muted-foreground">{p.category}</td>
+                              <td className="py-2.5">{formatRp(p.hpp)}</td>
+                              <td className="py-2.5 font-semibold">{formatRp(p.price)}</td>
+                              <td className="py-2.5">
+                                <span className={cn("flex items-center gap-1 font-semibold", isHealthy ? "text-emerald-600" : "text-amber-600")}>
+                                  <TrendingUp className="size-3" />
+                                  {margin.toFixed(0)}%
+                                </span>
+                              </td>
+                              <td className="py-2.5 font-semibold text-emerald-600">{formatRp(profit)}</td>
+                              <td className="py-2.5">
+                                {isHealthy ? (
+                                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-600 text-[10px]">
+                                    Healthy
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-600 text-[10px]">
+                                    Review
+                                  </Badge>
+                                )}
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                    </div>
+                    {/* Pagination */}
+                    {filteredProducts.length > pricingPerPage && (
+                      <div className="mt-4 flex items-center justify-between">
+                        <span className="text-xs text-muted-foreground">
+                          Showing {(pricingPage - 1) * pricingPerPage + 1}–{Math.min(pricingPage * pricingPerPage, filteredProducts.length)} of {filteredProducts.length}
+                        </span>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={pricingPage <= 1}
+                            onClick={() => setPricingPage(pricingPage - 1)}
+                          >
+                            <ChevronLeft className="size-3.5" />
+                          </Button>
+                          {Array.from({ length: pricingTotalPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={pricingPage === page ? "default" : "outline"}
+                              size="sm"
+                              className={cn("h-7 min-w-[28px] px-1.5 text-xs", pricingPage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                              onClick={() => setPricingPage(page)}
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 w-7 p-0"
+                            disabled={pricingPage >= pricingTotalPages}
+                            onClick={() => setPricingPage(pricingPage + 1)}
+                          >
+                            <ChevronRight className="size-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
         </div>
-      </Tabs>
 
       {/* Add Menu Modal */}
       {showAddMenu && (

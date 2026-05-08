@@ -108,7 +108,7 @@ export default function LoginPage() {
                 Didn&apos;t have an account?{" "}
                 <Link
                   href="#"
-                  className="font-medium text-lime-500 hover:underline"
+                  className="font-medium text-primary hover:underline"
                 >
                   Signup
                 </Link>
@@ -117,7 +117,7 @@ export default function LoginPage() {
 
             <Button
               type="submit"
-              className="mt-2 h-11 w-full rounded-full bg-foreground text-sm font-medium text-background hover:bg-foreground/90"
+              className="mt-2 h-11 w-full rounded-full bg-primary text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
               Login
             </Button>

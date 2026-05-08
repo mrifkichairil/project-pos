@@ -58,9 +58,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
         {/* Logo */}
         <div className="flex h-16 items-center gap-2 px-5">
           <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <span className="text-sm font-bold">R</span>
+            <span className="text-sm font-bold">W</span>
           </div>
-          <span className="text-lg font-bold">Rasa Nusa</span>
+          <span className="text-lg font-bold">Warung Kita</span>
           <button
             onClick={() => setSidebarOpen(false)}
             className="ml-auto flex size-7 items-center justify-center rounded-md border lg:hidden"
@@ -141,9 +141,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
           </button>
           <div className="flex items-center gap-2">
             <div className="flex size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <span className="text-sm font-bold">R</span>
+              <span className="text-sm font-bold">W</span>
             </div>
-            <span className="text-lg font-bold">Rasa Nusa</span>
+            <span className="text-lg font-bold">Warung Kita</span>
           </div>
         </div>
         {/* Content */}

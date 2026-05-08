@@ -106,7 +106,7 @@ export default function MemberPage() {
     <div className="flex h-full flex-col overflow-hidden">
       <header className="flex h-16 items-center justify-between border-b px-4 sm:px-6">
         <h1 className="text-base font-semibold sm:text-lg">Member Management</h1>
-        <Button className="h-8 gap-2 rounded-xl bg-blue-600 px-3 text-xs font-medium hover:bg-blue-700 sm:h-9 sm:px-4 sm:text-sm">
+        <Button className="h-8 gap-2 rounded-xl bg-primary px-3 text-xs font-medium hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm">
           <Plus className="size-3.5 sm:size-4" />
           <span className="hidden sm:inline">Add Member</span>
           <span className="sm:hidden">Add</span>

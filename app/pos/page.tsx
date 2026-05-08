@@ -543,6 +543,10 @@ export default function PosPage() {
             )}
           </button>
 
+          <div
+            key={activeTab}
+            className="animate-in fade-in-0 slide-in-from-bottom-2 duration-[650ms]"
+          >
           {activeTab === "new" ? (
             <>
           {/* Orders List */}
@@ -651,7 +655,7 @@ export default function PosPage() {
                 onClick={() => setActiveCategory(cat)}
                 className={
                   cat === activeCategory
-                    ? "rounded-full bg-foreground px-3 py-1.5 text-xs sm:px-4 sm:py-1.5 sm:text-sm font-medium text-background whitespace-nowrap"
+                    ? "rounded-full bg-primary px-3 py-1.5 text-xs sm:px-4 sm:py-1.5 sm:text-sm font-medium text-primary-foreground whitespace-nowrap"
                     : "rounded-full px-3 py-1.5 text-xs sm:px-4 sm:py-1.5 sm:text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground whitespace-nowrap"
                 }
               >
@@ -661,16 +665,19 @@ export default function PosPage() {
           </div>
 
           {/* Menu Grid */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+          <div
+            key={activeCategory}
+            className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5 animate-in fade-in-0 duration-[700ms]"
+          >
             {filteredMenu.map((item) => (
-              <Card key={item.id} className="flex flex-col gap-0 overflow-hidden rounded-none border-0 py-0 shadow-none">
+              <Card key={item.id} className="flex flex-col gap-0 overflow-hidden rounded-none border-0 py-0 shadow-none transition-transform duration-500 hover:-translate-y-0.5">
                 <div className="relative aspect-square w-full overflow-hidden shrink-0">
                   <img
                     src={item.image}
                     alt={item.name}
                     width={400}
                     height={400}
-                    className="block h-full w-full object-cover object-center"
+                    className="block h-full w-full object-cover object-center transition-transform duration-700 hover:scale-[1.03]"
                   />
                 </div>
                 <CardContent className="p-2">
@@ -753,7 +760,7 @@ export default function PosPage() {
                   return (
                     <div
                       key={col.key}
-                      className="flex min-w-72 flex-1 flex-col gap-3 rounded-xl bg-muted/30 p-3 transition-colors"
+                      className="flex min-w-72 flex-1 flex-col gap-3 rounded-xl bg-muted/30 p-3 transition-colors duration-500"
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
                         e.preventDefault();
@@ -779,7 +786,7 @@ export default function PosPage() {
                             draggable
                             onDragStart={(e) => e.dataTransfer.setData("orderId", order.id)}
                             onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}
-                            className="cursor-grab border-border/60 shadow-sm transition-colors hover:bg-muted/20 active:cursor-grabbing"
+                            className="cursor-grab border-border/60 shadow-sm transition-all duration-500 hover:-translate-y-0.5 hover:bg-muted/20 active:cursor-grabbing"
                           >
                             <CardContent className="p-3">
                               <div className="mb-2 flex items-center justify-between">
@@ -794,7 +801,7 @@ export default function PosPage() {
                               </div>
                               <div
                                 className={cn(
-                                  "grid transition-all duration-300 ease-out",
+                                  "grid transition-all duration-500 ease-out",
                                   expandedOrder === order.id ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0"
                                 )}
                               >
@@ -915,6 +922,7 @@ export default function PosPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
 
@@ -929,7 +937,7 @@ export default function PosPage() {
       )}
       <aside
         className={cn(
-          "flex w-[340px] shrink-0 flex-col border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-300 lg:static lg:translate-x-0 lg:z-auto",
+          "flex w-[340px] shrink-0 flex-col border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-500 lg:static lg:translate-x-0 lg:z-auto",
           cartOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}
       >
@@ -1493,7 +1501,7 @@ export default function PosPage() {
             <h3 className="mb-4 text-lg font-semibold">Receipt Preview</h3>
             <div className="mx-auto mb-4 max-w-[230px] rounded border border-dashed border-muted-foreground/30 bg-white p-4 font-mono text-[11px] leading-relaxed text-black dark:bg-white dark:text-black">
               <div className="text-center">
-                <p className="font-bold">RASA NUSA</p>
+                <p className="font-bold">WARUNG KITA</p>
                 <p>Jl. Kemang Raya No. 12</p>
                 <p>Jakarta Selatan</p>
                 <p>--------------------------</p>

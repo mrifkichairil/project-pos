@@ -319,7 +319,7 @@ export default function TransactionsPage() {
                       key={p}
                       variant={safePage === p ? "default" : "outline"}
                       size="sm"
-                      className={cn("h-7 min-w-7 px-1.5 text-xs", safePage === p ? "bg-blue-600 hover:bg-blue-700" : "")}
+                      className={cn("h-7 min-w-7 px-1.5 text-xs", safePage === p ? "bg-slate-600 hover:bg-slate-700" : "")}
                       onClick={() => setPage(p)}
                     >
                       {p}
