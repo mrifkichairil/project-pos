@@ -122,6 +122,7 @@ const orderStatusBadge = (status: string) => {
 export default function TransactionsPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"All" | "Success" | "Pending" | "Failed">("All");
+  const [dateFilter, setDateFilter] = useState<"All" | "Today" | "Weekly" | "Monthly">("All");
   const [page, setPage] = useState(1);
 
   const filtered = mockTransactions.filter((t) => {
@@ -130,134 +131,153 @@ export default function TransactionsPage() {
       t.customer.toLowerCase().includes(search.toLowerCase()) ||
       t.method.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === "All" || t.paymentStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    // Date filtering logic
+    let matchesDate = true;
+    if (dateFilter !== "All") {
+      const [day, month, year] = t.date.split("-").map(Number);
+      const transactionDate = new Date(year, month - 1, day);
+      const today = new Date();
+      
+      if (dateFilter === "Today") {
+        matchesDate = 
+          transactionDate.getDate() === today.getDate() &&
+          transactionDate.getMonth() === today.getMonth() &&
+          transactionDate.getFullYear() === today.getFullYear();
+      } else if (dateFilter === "Weekly") {
+        const oneWeekAgo = new Date(today);
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        matchesDate = transactionDate >= oneWeekAgo && transactionDate <= today;
+      } else if (dateFilter === "Monthly") {
+        const oneMonthAgo = new Date(today);
+        oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+        matchesDate = transactionDate >= oneMonthAgo && transactionDate <= today;
+      }
+    }
+    
+    return matchesSearch && matchesStatus && matchesDate;
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / perPage));
   const safePage = Math.min(page, totalPages);
   const paginated = filtered.slice((safePage - 1) * perPage, safePage * perPage);
 
+  const totalNominal = mockTransactions.reduce((sum, t) => sum + t.total, 0);
+  const successCount = mockTransactions.filter((t) => t.paymentStatus === "Success").length;
+  const pendingCount = mockTransactions.filter((t) => t.paymentStatus === "Pending").length;
+  const failedCount = mockTransactions.filter((t) => t.paymentStatus === "Failed").length;
+  const successNominal = mockTransactions
+    .filter((t) => t.paymentStatus === "Success")
+    .reduce((sum, t) => sum + t.total, 0);
+  const pendingNominal = mockTransactions
+    .filter((t) => t.paymentStatus === "Pending")
+    .reduce((sum, t) => sum + t.total, 0);
+  const failedNominal = mockTransactions
+    .filter((t) => t.paymentStatus === "Failed")
+    .reduce((sum, t) => sum + t.total, 0);
+
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden animate-fade-in">
       {/* Header */}
-      <header className="flex h-16 items-center justify-between border-b px-4 sm:px-6">
+      <header className="flex h-16 items-center border-b px-4 sm:px-6">
         <h1 className="text-base font-semibold sm:text-lg">Transactions</h1>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 gap-1.5 text-xs" onClick={() => { setSearch(""); setStatusFilter("All"); setPage(1); }}>
-            <RotateCcw className="size-3.5" />
-            <span className="hidden sm:inline">Reset</span>
-          </Button>
-        </div>
       </header>
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {/* Summary */}
         <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <Card>
+          <Card className="animate-slide-up" style={{ animationDelay: '0ms' }}>
             <CardContent className="flex flex-col gap-1 p-4">
-              <span className="text-xs text-muted-foreground">Total Transactions</span>
-              <span className="text-lg font-bold">{mockTransactions.length}</span>
+              <span className="text-xs text-muted-foreground">Total</span>
+              <span className="text-lg font-bold">Rp. {totalNominal.toLocaleString("id-ID")}</span>
+              <span className="text-[11px] text-muted-foreground">{mockTransactions.length} transaksi</span>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="animate-slide-up" style={{ animationDelay: '50ms' }}>
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-xs text-muted-foreground">Success</span>
-              <span className="text-lg font-bold text-emerald-600">{mockTransactions.filter(t => t.paymentStatus === "Success").length}</span>
+              <span className="text-lg font-bold text-emerald-600">Rp. {successNominal.toLocaleString("id-ID")}</span>
+              <span className="text-[11px] text-muted-foreground">{successCount} transaksi</span>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="animate-slide-up" style={{ animationDelay: '100ms' }}>
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-xs text-muted-foreground">Pending</span>
-              <span className="text-lg font-bold text-amber-600">{mockTransactions.filter(t => t.paymentStatus === "Pending").length}</span>
+              <span className="text-lg font-bold text-amber-600">Rp. {pendingNominal.toLocaleString("id-ID")}</span>
+              <span className="text-[11px] text-muted-foreground">{pendingCount} transaksi</span>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="animate-slide-up" style={{ animationDelay: '150ms' }}>
             <CardContent className="flex flex-col gap-1 p-4">
               <span className="text-xs text-muted-foreground">Failed</span>
-              <span className="text-lg font-bold text-red-600">{mockTransactions.filter(t => t.paymentStatus === "Failed").length}</span>
+              <span className="text-lg font-bold text-red-600">Rp. {failedNominal.toLocaleString("id-ID")}</span>
+              <span className="text-[11px] text-muted-foreground">{failedCount} transaksi</span>
             </CardContent>
           </Card>
         </div>
 
-        {/* Revenue Breakdown by Payment */}
-        <div className="mb-4">
-          <h2 className="mb-3 text-sm font-semibold">Revenue Breakdown by Payment</h2>
-          {(() => {
-            const methods = ["Cash","QRIS","Debit","OVO","GoPay"] as const;
-            const colors: Record<string, string> = {
-              Cash: "bg-emerald-500",
-              QRIS: "bg-blue-500",
-              Debit: "bg-violet-500",
-              OVO: "bg-purple-500",
-              GoPay: "bg-cyan-500",
-            };
-            const grandTotal = mockTransactions.reduce((s, t) => s + t.total, 0);
-            const breakdown = methods.map((m) => {
-              const total = mockTransactions
-                .filter((t) => t.method === m)
-                .reduce((sum, t) => sum + t.total, 0);
-              const pct = grandTotal > 0 ? (total / grandTotal) * 100 : 0;
-              return { method: m, total, pct };
-            });
-            return (
-              <div>
-                <div className="flex h-5 w-full overflow-hidden rounded-full">
-                  {breakdown.map(({ method, pct }) => (
-                    <div
-                      key={method}
-                      className={cn("h-full", colors[method])}
-                      style={{ width: `${pct}%` }}
-                    />
-                  ))}
-                </div>
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-2">
-                  {breakdown.map(({ method, total, pct }) => (
-                    <div key={method} className="flex items-center gap-1.5 text-xs">
-                      <span className={cn("inline-block size-2.5 rounded-full", colors[method])} />
-                      <span className="text-muted-foreground">{methodIcon(method)}</span>
-                      <span className="font-medium">{method}</span>
-                      <span className="text-muted-foreground">
-                        Rp {total.toLocaleString("id-ID")} ({pct.toFixed(0)}%)
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          })()}
-        </div>
 
         {/* Filters */}
-        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search ID, customer, method..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border-border bg-muted/50 pl-8 text-xs"
-            />
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between animate-slide-up" style={{ animationDelay: '250ms' }}>
+          <div className="flex w-full items-center gap-2 sm:w-auto">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search ID, customer, method..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 w-full rounded-lg border-border bg-muted/50 pl-8 text-xs transition-all duration-200 focus:scale-105"
+              />
+            </div>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 px-3 text-xs" onClick={() => { setSearch(""); setStatusFilter("All"); setDateFilter("All"); setPage(1); }}>
+              <RotateCcw className="size-3.5" />
+              <span className="hidden sm:inline">Reset</span>
+            </Button>
           </div>
-          <div className="flex gap-1.5">
-            {(["All", "Success", "Pending", "Failed"] as const).map((s) => (
-              <button
-                key={s}
-                onClick={() => setStatusFilter(s)}
-                className={cn(
-                  "rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors",
-                  statusFilter === s
-                    ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                {s}
-              </button>
-            ))}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Date</span>
+              <div className="flex gap-1.5">
+                {(["All", "Today", "Weekly", "Monthly"] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={() => setDateFilter(d)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:scale-105 active:scale-95",
+                      dateFilter === d
+                        ? "border-blue-500 bg-blue-500/10 text-blue-600 shadow-sm"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {d}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex flex-col gap-2">
+              <span className="text-xs font-medium text-muted-foreground">Payment Status</span>
+              <div className="flex gap-1.5">
+                {(["All", "Success", "Pending", "Failed"] as const).map((s) => (
+                  <button
+                    key={s}
+                    onClick={() => setStatusFilter(s)}
+                    className={cn(
+                      "rounded-lg border px-3 py-1.5 text-xs font-medium transition-all duration-200 hover:scale-105 active:scale-95",
+                      statusFilter === s
+                        ? "border-primary bg-primary/10 text-primary shadow-sm"
+                        : "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Table */}
-        <Card>
+        <Card className="animate-slide-up" style={{ animationDelay: '300ms' }}>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-semibold">Transaction List</CardTitle>
           </CardHeader>
@@ -277,8 +297,12 @@ export default function TransactionsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {paginated.map((t) => (
-                    <tr key={t.id} className="hover:bg-muted/30 transition-colors">
+                  {paginated.map((t, index) => (
+                    <tr 
+                      key={t.id} 
+                      className="hover:bg-muted/30 transition-all duration-200 animate-slide-up"
+                      style={{ animationDelay: `${350 + index * 30}ms` }}
+                    >
                       <td className="py-2.5 text-left font-medium">{t.id}</td>
                       <td className="py-2.5 text-left text-muted-foreground">{t.date}, {t.time}</td>
                       <td className="py-2.5 text-left">{t.customer}</td>
@@ -300,7 +324,7 @@ export default function TransactionsPage() {
 
             {/* Pagination */}
             {filtered.length > perPage && (
-              <div className="mt-4 flex items-center justify-between">
+              <div className="mt-4 flex items-center justify-between animate-slide-up" style={{ animationDelay: '650ms' }}>
                 <span className="text-xs text-muted-foreground">
                   Showing {(safePage - 1) * perPage + 1}–{Math.min(safePage * perPage, filtered.length)} of {filtered.length}
                 </span>
@@ -308,7 +332,7 @@ export default function TransactionsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className="h-7 w-7 p-0 transition-all duration-200 hover:scale-110 active:scale-95"
                     disabled={page <= 1}
                     onClick={() => setPage(page - 1)}
                   >
@@ -319,7 +343,10 @@ export default function TransactionsPage() {
                       key={p}
                       variant={safePage === p ? "default" : "outline"}
                       size="sm"
-                      className={cn("h-7 min-w-7 px-1.5 text-xs", safePage === p ? "bg-slate-600 hover:bg-slate-700" : "")}
+                      className={cn(
+                        "h-7 min-w-7 px-1.5 text-xs transition-all duration-200 hover:scale-110 active:scale-95",
+                        safePage === p ? "bg-slate-600 hover:bg-slate-700" : ""
+                      )}
                       onClick={() => setPage(p)}
                     >
                       {p}
@@ -328,7 +355,7 @@ export default function TransactionsPage() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="h-7 w-7 p-0"
+                    className="h-7 w-7 p-0 transition-all duration-200 hover:scale-110 active:scale-95"
                     disabled={page >= totalPages}
                     onClick={() => setPage(page + 1)}
                   >

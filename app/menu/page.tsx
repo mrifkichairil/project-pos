@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,8 +9,6 @@ import { Label } from "@/components/ui/label";
 import {
   Plus,
   Search,
-  BookOpen,
-  Receipt,
   Calculator,
   TrendingUp,
   X,
@@ -20,51 +18,12 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─── Mock Data ─── */
-
-const ingredientPrices: Record<string, { unit: string; price: number; supplier: string; stock: number }> = {
-  "Kopi Arabica": { unit: "gram", price: 40, supplier: "PT Kopi Nusantara", stock: 3500 },
-  "Susu Full Cream": { unit: "ml", price: 35, supplier: "Indofood", stock: 8000 },
-  "Gula Pasir": { unit: "gram", price: 25, supplier: "Gulaku", stock: 12000 },
-  "Es Batu": { unit: "gram", price: 8, supplier: "CV Aneka Es", stock: 200 },
-  Nasi: { unit: "gram", price: 25, supplier: "PT Beras Jaya", stock: 25000 },
-  "Ayam Fillet": { unit: "gram", price: 60, supplier: "PT Sumber Protein", stock: 4500 },
-  "Minyak Goreng": { unit: "ml", price: 30, supplier: "Bimoli", stock: 6000 },
-  Telur: { unit: "pcs", price: 2500, supplier: "Peternakan Sejahtera", stock: 300 },
-  "Tepung Terigu": { unit: "gram", price: 22, supplier: "Segitiga Biru", stock: 8000 },
-  "Kecap Manis": { unit: "ml", price: 40, supplier: "ABC", stock: 4000 },
-  Bawang: { unit: "gram", price: 30, supplier: "Sayurku", stock: 5000 },
-  "Daging Sapi": { unit: "gram", price: 140, supplier: "PT Daging Segar", stock: 3000 },
-  "Tusuk Sate": { unit: "pcs", price: 100, supplier: "CV Sate Jaya", stock: 2000 },
-  "Santan": { unit: "ml", price: 50, supplier: "Kara", stock: 5000 },
-  "Ketupat": { unit: "pcs", price: 3000, supplier: "Warung Ketupat", stock: 150 },
-  "Mie Kering": { unit: "gram", price: 30, supplier: "Indomie", stock: 4000 },
-  "Jeruk Peras": { unit: "ml", price: 20, supplier: "Petani Jeruk", stock: 10000 },
-  "Teh Hitam": { unit: "gram", price: 80, supplier: "Sariwangi", stock: 2000 },
-  "Sayur Sop": { unit: "gram", price: 35, supplier: "Sayurku", stock: 6000 },
-  "Kulit Lumpia": { unit: "lembar", price: 500, supplier: "Toko Kue", stock: 500 },
-  "Ubi": { unit: "gram", price: 25, supplier: "Petani Ubi", stock: 8000 },
-  "Kelapa Parut": { unit: "gram", price: 35, supplier: "CV Kelapa", stock: 4000 },
-  "Tepung Ketan": { unit: "gram", price: 35, supplier: "Bogasari", stock: 3000 },
-  "Gula Merah": { unit: "gram", price: 32, supplier: "Gula Jawa", stock: 2500 },
-  "Pisang": { unit: "gram", price: 25, supplier: "Petani Pisang", stock: 10000 },
-  "Roti Tawar": { unit: "gram", price: 30, supplier: "Sari Roti", stock: 2000 },
-  "Keju": { unit: "gram", price: 120, supplier: "Kraft", stock: 1500 },
-  "Sosis": { unit: "gram", price: 70, supplier: "Sofyan", stock: 3000 },
-  "Tepung Martabak": { unit: "gram", price: 25, supplier: "Bogasari", stock: 4000 },
-  "Susu Kental Manis": { unit: "ml", price: 70, supplier: "Indomilk", stock: 3000 },
-  "Coklat Bubuk": { unit: "gram", price: 180, supplier: "Silver Queen", stock: 1000 },
-  "Susu UHT": { unit: "ml", price: 30, supplier: "Ultra", stock: 6000 },
-  "Tepung Terigu Premium": { unit: "gram", price: 30, supplier: "Segitiga Biru", stock: 5000 },
-  "Ragi": { unit: "gram", price: 180, supplier: "Fermipan", stock: 500 },
-  "Margarin": { unit: "gram", price: 50, supplier: "Blue Band", stock: 2000 },
-  "Garam": { unit: "gram", price: 20, supplier: "Garam Lokal", stock: 10000 },
-  "Merica": { unit: "gram", price: 180, supplier: "Sasa", stock: 500 },
-  "Bihun": { unit: "gram", price: 35, supplier: "Bihun Jaya", stock: 3000 },
-  "Kubis": { unit: "gram", price: 25, supplier: "Sayurku", stock: 5000 },
-  "Kacang Panjang": { unit: "gram", price: 35, supplier: "Sayurku", stock: 3000 },
-  "Kacang Tanah": { unit: "gram", price: 45, supplier: "PT Kacang", stock: 4000 },
-};
+interface IngredientPrice {
+  unit: string;
+  price: number;
+  supplier: string | null;
+  stock: number;
+}
 
 interface RecipeIngredient {
   name: string;
@@ -79,282 +38,6 @@ interface Recipe {
   ingredients: RecipeIngredient[];
 }
 
-const initialRecipes: Recipe[] = [
-  // Main Dish
-  {
-    id: 1,
-    name: "Nasi Goreng",
-    category: "Main Dish",
-    ingredients: [
-      { name: "Nasi", qty: 300, unit: "gram" },
-      { name: "Minyak Goreng", qty: 15, unit: "ml" },
-      { name: "Telur", qty: 1, unit: "pcs" },
-      { name: "Kecap Manis", qty: 10, unit: "ml" },
-      { name: "Bawang", qty: 20, unit: "gram" },
-    ],
-  },
-  {
-    id: 2,
-    name: "Ayam Goreng",
-    category: "Main Dish",
-    ingredients: [
-      { name: "Ayam Fillet", qty: 250, unit: "gram" },
-      { name: "Minyak Goreng", qty: 50, unit: "ml" },
-      { name: "Tepung Terigu", qty: 30, unit: "gram" },
-      { name: "Telur", qty: 0.5, unit: "pcs" },
-    ],
-  },
-  {
-    id: 3,
-    name: "Mie Goreng",
-    category: "Main Dish",
-    ingredients: [
-      { name: "Minyak Goreng", qty: 10, unit: "ml" },
-      { name: "Telur", qty: 1, unit: "pcs" },
-      { name: "Kecap Manis", qty: 15, unit: "ml" },
-      { name: "Bawang", qty: 15, unit: "gram" },
-    ],
-  },
-  {
-    id: 4,
-    name: "Sate Ayam",
-    category: "Main Dish",
-    ingredients: [
-      { name: "Ayam Fillet", qty: 200, unit: "gram" },
-      { name: "Tusuk Sate", qty: 10, unit: "pcs" },
-      { name: "Kecap Manis", qty: 20, unit: "ml" },
-      { name: "Minyak Goreng", qty: 10, unit: "ml" },
-      { name: "Bawang", qty: 10, unit: "gram" },
-    ],
-  },
-  {
-    id: 5,
-    name: "Rendang",
-    category: "Main Dish",
-    ingredients: [
-      { name: "Daging Sapi", qty: 200, unit: "gram" },
-      { name: "Santan", qty: 150, unit: "ml" },
-      { name: "Bawang", qty: 20, unit: "gram" },
-      { name: "Minyak Goreng", qty: 20, unit: "ml" },
-    ],
-  },
-  // Beverage
-  {
-    id: 6,
-    name: "Kopi Susu",
-    category: "Beverage",
-    ingredients: [
-      { name: "Kopi Arabica", qty: 18, unit: "gram" },
-      { name: "Susu Full Cream", qty: 120, unit: "ml" },
-      { name: "Gula Pasir", qty: 10, unit: "gram" },
-    ],
-  },
-  {
-    id: 7,
-    name: "Es Buah",
-    category: "Beverage",
-    ingredients: [
-      { name: "Es Batu", qty: 200, unit: "gram" },
-      { name: "Gula Pasir", qty: 30, unit: "gram" },
-    ],
-  },
-  {
-    id: 8,
-    name: "Es Teh",
-    category: "Beverage",
-    ingredients: [
-      { name: "Teh Hitam", qty: 5, unit: "gram" },
-      { name: "Gula Pasir", qty: 15, unit: "gram" },
-      { name: "Es Batu", qty: 150, unit: "gram" },
-    ],
-  },
-  {
-    id: 9,
-    name: "Jus Jeruk",
-    category: "Beverage",
-    ingredients: [
-      { name: "Jeruk Peras", qty: 200, unit: "ml" },
-      { name: "Gula Pasir", qty: 15, unit: "gram" },
-      { name: "Es Batu", qty: 100, unit: "gram" },
-    ],
-  },
-  {
-    id: 10,
-    name: "Kopi Hitam",
-    category: "Beverage",
-    ingredients: [
-      { name: "Kopi Arabica", qty: 15, unit: "gram" },
-      { name: "Gula Pasir", qty: 8, unit: "gram" },
-    ],
-  },
-  // Appetizer
-  {
-    id: 11,
-    name: "Gado-Gado",
-    category: "Appetizer",
-    ingredients: [
-      { name: "Sayur Sop", qty: 150, unit: "gram" },
-      { name: "Kacang Panjang", qty: 50, unit: "gram" },
-      { name: "Kacang Tanah", qty: 30, unit: "gram" },
-      { name: "Santan", qty: 50, unit: "ml" },
-      { name: "Minyak Goreng", qty: 10, unit: "ml" },
-    ],
-  },
-  {
-    id: 12,
-    name: "Bakso",
-    category: "Appetizer",
-    ingredients: [
-      { name: "Ayam Fillet", qty: 100, unit: "gram" },
-      { name: "Tepung Terigu", qty: 20, unit: "gram" },
-      { name: "Bawang", qty: 10, unit: "gram" },
-      { name: "Minyak Goreng", qty: 15, unit: "ml" },
-    ],
-  },
-  {
-    id: 13,
-    name: "Soto",
-    category: "Appetizer",
-    ingredients: [
-      { name: "Ayam Fillet", qty: 150, unit: "gram" },
-      { name: "Santan", qty: 100, unit: "ml" },
-      { name: "Bawang", qty: 15, unit: "gram" },
-      { name: "Minyak Goreng", qty: 10, unit: "ml" },
-    ],
-  },
-  {
-    id: 14,
-    name: "Lumpia",
-    category: "Appetizer",
-    ingredients: [
-      { name: "Kulit Lumpia", qty: 2, unit: "lembar" },
-      { name: "Ubi", qty: 100, unit: "gram" },
-      { name: "Minyak Goreng", qty: 30, unit: "ml" },
-      { name: "Bawang", qty: 5, unit: "gram" },
-    ],
-  },
-  {
-    id: 15,
-    name: "Risoles",
-    category: "Appetizer",
-    ingredients: [
-      { name: "Tepung Terigu", qty: 30, unit: "gram" },
-      { name: "Telur", qty: 1, unit: "pcs" },
-      { name: "Minyak Goreng", qty: 20, unit: "ml" },
-      { name: "Susu Full Cream", qty: 30, unit: "ml" },
-    ],
-  },
-  // Snack
-  {
-    id: 16,
-    name: "Klepon",
-    category: "Snack",
-    ingredients: [
-      { name: "Tepung Ketan", qty: 80, unit: "gram" },
-      { name: "Gula Merah", qty: 20, unit: "gram" },
-      { name: "Kelapa Parut", qty: 30, unit: "gram" },
-    ],
-  },
-  {
-    id: 17,
-    name: "Onde-Onde",
-    category: "Snack",
-    ingredients: [
-      { name: "Tepung Terigu", qty: 50, unit: "gram" },
-      { name: "Kelapa Parut", qty: 40, unit: "gram" },
-      { name: "Gula Pasir", qty: 15, unit: "gram" },
-      { name: "Minyak Goreng", qty: 20, unit: "ml" },
-    ],
-  },
-  {
-    id: 18,
-    name: "Pisang Goreng",
-    category: "Snack",
-    ingredients: [
-      { name: "Pisang", qty: 150, unit: "gram" },
-      { name: "Tepung Terigu", qty: 30, unit: "gram" },
-      { name: "Minyak Goreng", qty: 30, unit: "ml" },
-      { name: "Gula Pasir", qty: 10, unit: "gram" },
-    ],
-  },
-  {
-    id: 19,
-    name: "Roti Bakar",
-    category: "Snack",
-    ingredients: [
-      { name: "Roti Tawar", qty: 100, unit: "gram" },
-      { name: "Margarin", qty: 15, unit: "gram" },
-      { name: "Gula Pasir", qty: 10, unit: "gram" },
-      { name: "Susu Kental Manis", qty: 10, unit: "ml" },
-    ],
-  },
-  {
-    id: 20,
-    name: "Martabak",
-    category: "Snack",
-    ingredients: [
-      { name: "Tepung Martabak", qty: 80, unit: "gram" },
-      { name: "Telur", qty: 2, unit: "pcs" },
-      { name: "Minyak Goreng", qty: 30, unit: "ml" },
-      { name: "Bawang", qty: 10, unit: "gram" },
-    ],
-  },
-  // Dessert
-  {
-    id: 21,
-    name: "Es Krim",
-    category: "Dessert",
-    ingredients: [
-      { name: "Susu UHT", qty: 200, unit: "ml" },
-      { name: "Gula Pasir", qty: 25, unit: "gram" },
-      { name: "Coklat Bubuk", qty: 10, unit: "gram" },
-    ],
-  },
-  {
-    id: 22,
-    name: "Pudding",
-    category: "Dessert",
-    ingredients: [
-      { name: "Susu UHT", qty: 150, unit: "ml" },
-      { name: "Gula Pasir", qty: 20, unit: "gram" },
-      { name: "Tepung Terigu Premium", qty: 15, unit: "gram" },
-    ],
-  },
-  {
-    id: 23,
-    name: "Bolu",
-    category: "Dessert",
-    ingredients: [
-      { name: "Tepung Terigu Premium", qty: 100, unit: "gram" },
-      { name: "Telur", qty: 2, unit: "pcs" },
-      { name: "Gula Pasir", qty: 50, unit: "gram" },
-      { name: "Margarin", qty: 30, unit: "gram" },
-    ],
-  },
-  {
-    id: 24,
-    name: "Donat",
-    category: "Dessert",
-    ingredients: [
-      { name: "Tepung Terigu Premium", qty: 80, unit: "gram" },
-      { name: "Telur", qty: 1, unit: "pcs" },
-      { name: "Gula Pasir", qty: 30, unit: "gram" },
-      { name: "Minyak Goreng", qty: 30, unit: "ml" },
-    ],
-  },
-  {
-    id: 25,
-    name: "Cake",
-    category: "Dessert",
-    ingredients: [
-      { name: "Tepung Terigu Premium", qty: 120, unit: "gram" },
-      { name: "Telur", qty: 3, unit: "pcs" },
-      { name: "Gula Pasir", qty: 80, unit: "gram" },
-      { name: "Margarin", qty: 50, unit: "gram" },
-    ],
-  },
-];
-
 interface Product {
   id: number;
   name: string;
@@ -363,44 +46,21 @@ interface Product {
   price: number;
 }
 
-const initialProducts: Product[] = [
-  // Main Dish
-  { id: 1, name: "Nasi Goreng", category: "Main Dish", hpp: 10500, price: 35000 },
-  { id: 4, name: "Ayam Goreng", category: "Main Dish", hpp: 12000, price: 40000 },
-  { id: 5, name: "Mie Goreng", category: "Main Dish", hpp: 9600, price: 32000 },
-  { id: 6, name: "Sate Ayam", category: "Main Dish", hpp: 11400, price: 38000 },
-  { id: 7, name: "Rendang", category: "Main Dish", hpp: 16500, price: 55000 },
-  // Beverage
-  { id: 2, name: "Kopi Susu", category: "Beverage", hpp: 6600, price: 22000 },
-  { id: 3, name: "Es Buah", category: "Beverage", hpp: 7800, price: 26000 },
-  { id: 8, name: "Es Teh", category: "Beverage", hpp: 2400, price: 8000 },
-  { id: 9, name: "Jus Jeruk", category: "Beverage", hpp: 5400, price: 18000 },
-  { id: 10, name: "Kopi Hitam", category: "Beverage", hpp: 4500, price: 15000 },
-  // Appetizer
-  { id: 11, name: "Gado-Gado", category: "Appetizer", hpp: 7500, price: 25000 },
-  { id: 12, name: "Bakso", category: "Appetizer", hpp: 8400, price: 28000 },
-  { id: 13, name: "Soto", category: "Appetizer", hpp: 9000, price: 30000 },
-  { id: 14, name: "Lumpia", category: "Appetizer", hpp: 6000, price: 20000 },
-  { id: 15, name: "Risoles", category: "Appetizer", hpp: 5400, price: 18000 },
-  // Snack
-  { id: 16, name: "Klepon", category: "Snack", hpp: 4500, price: 15000 },
-  { id: 17, name: "Onde-Onde", category: "Snack", hpp: 4800, price: 16000 },
-  { id: 18, name: "Pisang Goreng", category: "Snack", hpp: 5400, price: 18000 },
-  { id: 19, name: "Roti Bakar", category: "Snack", hpp: 6000, price: 20000 },
-  { id: 20, name: "Martabak", category: "Snack", hpp: 7500, price: 25000 },
-  // Dessert
-  { id: 21, name: "Es Krim", category: "Dessert", hpp: 7500, price: 25000 },
-  { id: 22, name: "Pudding", category: "Dessert", hpp: 6000, price: 20000 },
-  { id: 23, name: "Bolu", category: "Dessert", hpp: 10500, price: 35000 },
-  { id: 24, name: "Donat", category: "Dessert", hpp: 6600, price: 22000 },
-  { id: 25, name: "Cake", category: "Dessert", hpp: 13500, price: 45000 },
-];
+interface MenuApiResponse {
+  recipes: Recipe[];
+  products: Product[];
+  ingredients: Array<IngredientPrice & { name: string }>;
+}
+
+const initialRecipes: Recipe[] = [];
+const initialProducts: Product[] = [];
+
 
 /* ─── Helpers ─── */
 
 const formatRp = (n: number) => `Rp. ${Math.round(n).toLocaleString("id-ID")}`;
 
-function calcHPP(ingredients: RecipeIngredient[]) {
+function calcHPP(ingredients: RecipeIngredient[], ingredientPrices: Record<string, IngredientPrice>) {
   return ingredients.reduce((sum, ing) => {
     const p = ingredientPrices[ing.name]?.price ?? 0;
     return sum + ing.qty * p;
@@ -420,6 +80,9 @@ export default function MenuRecipePage() {
 
   const [recipesData, setRecipesData] = useState<Recipe[]>(initialRecipes);
   const [productsData, setProductsData] = useState<Product[]>(initialProducts);
+  const [ingredientPrices, setIngredientPrices] = useState<Record<string, IngredientPrice>>({});
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [showAddMenu, setShowAddMenu] = useState(false);
   const [pricingPage, setPricingPage] = useState(1);
@@ -447,6 +110,50 @@ export default function MenuRecipePage() {
     pricingPage * pricingPerPage
   );
 
+  const loadMenuData = useCallback(async () => {
+    try {
+      const response = await fetch("/api/menu", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch menu data");
+      }
+
+      const data = (await response.json()) as MenuApiResponse;
+      setRecipesData(data.recipes);
+      setProductsData(data.products);
+      setIngredientPrices(
+        data.ingredients.reduce<Record<string, IngredientPrice>>((acc, ingredient) => {
+          acc[ingredient.name] = {
+            unit: ingredient.unit,
+            price: ingredient.price,
+            supplier: ingredient.supplier,
+            stock: ingredient.stock,
+          };
+          return acc;
+        }, {})
+      );
+      setSelectedRecipe((prev) => {
+        if (!prev) return prev;
+        const latestRecipe = data.recipes.find((recipe) => recipe.id === prev.id);
+        if (!latestRecipe) {
+          setSidebarOpen(false);
+          return null;
+        }
+        return latestRecipe;
+      });
+      setErrorMessage("");
+    } catch {
+      setErrorMessage("Failed to load menu data");
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadMenuData();
+    });
+  }, [loadMenuData]);
+
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
       if (e.key === "Escape") setShowAddMenu(false);
@@ -455,41 +162,51 @@ export default function MenuRecipePage() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
-  useEffect(() => {
-    setPricingPage(1);
-  }, [search, activeTab]);
-
-  const handleAddMenu = () => {
+  const handleAddMenu = async () => {
     if (!newMenu.name || !newMenu.price) return;
+
     const validIngredients = newMenu.ingredients
       .filter((ing) => ing.name && ing.qty)
       .map((ing) => ({
         name: ing.name,
         qty: Number(ing.qty),
         unit: ing.unit || ingredientPrices[ing.name]?.unit || "pcs",
-      }));
+      }))
+      .filter((ing) => Number.isFinite(ing.qty) && ing.qty > 0);
+
     if (validIngredients.length === 0) return;
 
-    const id = Math.max(...recipesData.map((r) => r.id), 0) + 1;
-    const hpp = calcHPP(validIngredients);
-    const price = Number(newMenu.price);
+    try {
+      const response = await fetch("/api/menu", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newMenu.name,
+          category: newMenu.category,
+          price: Number(newMenu.price),
+          ingredients: validIngredients,
+        }),
+      });
 
-    setRecipesData([
-      ...recipesData,
-      { id, name: newMenu.name, category: newMenu.category, ingredients: validIngredients },
-    ]);
-    setProductsData([
-      ...productsData,
-      { id, name: newMenu.name, category: newMenu.category, hpp, price },
-    ]);
+      if (!response.ok) {
+        const data = (await response.json()) as { error?: string };
+        setErrorMessage(data.error || "Failed to create menu");
+        return;
+      }
 
-    setNewMenu({
-      name: "",
-      category: "Main Dish",
-      price: "",
-      ingredients: [{ name: "", qty: "", unit: "" }],
-    });
-    setShowAddMenu(false);
+      setIsLoading(true);
+      await loadMenuData();
+
+      setNewMenu({
+        name: "",
+        category: "Main Dish",
+        price: "",
+        ingredients: [{ name: "", qty: "", unit: "" }],
+      });
+      setShowAddMenu(false);
+    } catch {
+      setErrorMessage("Failed to create menu");
+    }
   };
 
   const updateIngredient = (index: number, field: "name" | "qty" | "unit", value: string) => {
@@ -515,13 +232,14 @@ export default function MenuRecipePage() {
   };
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="flex h-full flex-col overflow-hidden animate-fade-in">
       {/* Header */}
       <header className="flex h-16 items-center justify-between border-b px-4 sm:px-6">
         <h1 className="text-base font-semibold sm:text-lg">Menu & Recipe Management</h1>
         <Button
-          className="h-8 gap-2 rounded-xl bg-blue-600 px-3 text-xs font-medium hover:bg-blue-700 sm:h-9 sm:px-4 sm:text-sm"
+          className="h-8 gap-2 rounded-xl bg-primary px-3 text-xs font-medium hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm"
           onClick={() => setShowAddMenu(true)}
+          disabled={isLoading}
         >
           <Plus className="size-3.5 sm:size-4" />
           <span className="hidden sm:inline">Add Menu</span>
@@ -530,11 +248,14 @@ export default function MenuRecipePage() {
       </header>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b px-4 pt-4 sm:px-6">
+      <div className="flex gap-1 border-b px-4 pt-4 sm:px-6 animate-slide-up" style={{ animationDelay: '50ms' }}>
         <button
-          onClick={() => setActiveTab("recipe")}
+          onClick={() => {
+            setActiveTab("recipe");
+            setPricingPage(1);
+          }}
           className={cn(
-            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
+            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95",
             activeTab === "recipe"
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -543,9 +264,12 @@ export default function MenuRecipePage() {
           Recipe (BOM)
         </button>
         <button
-          onClick={() => setActiveTab("pricing")}
+          onClick={() => {
+            setActiveTab("pricing");
+            setPricingPage(1);
+          }}
           className={cn(
-            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
+            "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-all duration-200 hover:scale-105 active:scale-95",
             activeTab === "pricing"
               ? "bg-primary/10 text-primary"
               : "text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -556,16 +280,25 @@ export default function MenuRecipePage() {
       </div>
 
         {/* Search */}
-        <div className="px-4 pt-4 sm:px-6">
-          <div className="relative w-full sm:w-72">
-            <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder="Search menu..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="h-9 w-full rounded-lg border-border bg-muted/50 pl-8 text-xs"
-            />
+        <div className="px-4 pt-4 pb-4 sm:px-6 animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <div className="flex items-center gap-4">
+            <div className="relative w-full sm:w-72">
+              <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="Search menu..."
+                value={search}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPricingPage(1);
+                }}
+                className="h-9 w-full rounded-lg border-border bg-muted/50 pl-8 text-xs transition-all duration-200 focus:scale-105"
+              />
+            </div>
+            <p className="text-xs text-muted-foreground whitespace-nowrap">
+              {isLoading ? "Loading menu..." : `Showing ${filteredRecipes.length} recipes`}
+            </p>
           </div>
+          {errorMessage && <p className="mt-2 text-xs text-red-600">{errorMessage}</p>}
         </div>
 
         <div className="flex-1 overflow-y-auto">
@@ -575,17 +308,17 @@ export default function MenuRecipePage() {
               <div className="flex h-full overflow-hidden">
                 {/* Left — Recipe Cards */}
                 <div className="flex flex-1 flex-col overflow-y-auto px-4 sm:px-6">
-                  <p className="mb-3 text-xs text-muted-foreground">Showing {filteredRecipes.length} recipes</p>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    {filteredRecipes.map((recipe) => {
-                      const hpp = calcHPP(recipe.ingredients);
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 min-[1500px]:grid-cols-3">
+                    {filteredRecipes.map((recipe, index) => {
+                      const hpp = calcHPP(recipe.ingredients, ingredientPrices);
                       return (
                         <Card
                           key={recipe.id}
                           onClick={() => { setSelectedRecipe(recipe); setSidebarOpen(true); }}
-                          className={`cursor-pointer border-border/60 transition-colors hover:border-primary/30 hover:shadow-sm ${
+                          className={`cursor-pointer border-border/60 transition-all duration-200 hover:border-primary/30 hover:shadow-sm hover:scale-[1.02] animate-slide-up ${
                             selectedRecipe?.id === recipe.id ? "border-primary bg-primary/5" : ""
                           }`}
+                          style={{ animationDelay: `${200 + index * 50}ms` }}
                         >
                           <CardContent className="flex items-center gap-3 p-3">
                             <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
@@ -610,23 +343,23 @@ export default function MenuRecipePage() {
                 </div>
 
                 {/* Mobile Overlay */}
-                {selectedRecipe && (
+                {selectedRecipe && sidebarOpen && (
                   <div
-                    className="fixed inset-0 z-40 bg-black/50 lg:hidden"
+                    className="fixed inset-0 z-40 bg-black/50 min-[1300px]:hidden"
                     onClick={() => setSidebarOpen(false)}
                   />
                 )}
                 {/* Right — Recipe Detail Sidebar */}
                 <aside
                   className={cn(
-                    "w-[32rem] shrink-0 overflow-y-auto border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-300 lg:static lg:translate-x-0 lg:z-auto",
-                    sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
+                    "w-[32rem] shrink-0 overflow-y-auto border-l bg-background fixed inset-y-0 right-0 z-50 transition-transform duration-300 min-[1300px]:static min-[1300px]:translate-x-0 min-[1300px]:z-auto",
+                    sidebarOpen ? "translate-x-0" : "translate-x-full min-[1300px]:translate-x-0"
                   )}
                 >
                   {selectedRecipe ? (
                     <div className="p-4 sm:p-6">
                       {/* Header */}
-                      <div className="mb-6 flex items-center gap-3">
+                      <div className="mb-6 flex items-center gap-3 animate-slide-up" style={{ animationDelay: '0ms' }}>
                         <div className="flex size-12 items-center justify-center rounded-xl bg-primary/10">
                           <Calculator className="size-6 text-primary" />
                         </div>
@@ -637,18 +370,18 @@ export default function MenuRecipePage() {
                               {selectedRecipe.category}
                             </Badge>
                           </div>
-                          <p className="text-[11px] text-muted-foreground">{selectedRecipe.ingredients.length} ingredients · HPP {formatRp(calcHPP(selectedRecipe.ingredients))}</p>
+                          <p className="text-[11px] text-muted-foreground">{selectedRecipe.ingredients.length} ingredients · HPP {formatRp(calcHPP(selectedRecipe.ingredients, ingredientPrices))}</p>
                         </div>
                         <button
                           onClick={() => setSidebarOpen(false)}
-                          className="lg:hidden flex size-8 items-center justify-center rounded-lg border"
+                          className="min-[1300px]:hidden flex size-8 items-center justify-center rounded-lg border"
                         >
                           <X className="size-4" />
                         </button>
                       </div>
 
                       {/* BOM Table */}
-                      <div>
+                      <div className="animate-slide-up" style={{ animationDelay: '50ms' }}>
                         <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill of Materials</h3>
                         <div className="overflow-x-auto rounded-lg border border-border/60">
                           <table className="w-full text-left text-xs min-w-125">
@@ -666,13 +399,13 @@ export default function MenuRecipePage() {
                             </thead>
                             <tbody className="divide-y divide-border/60">
                               {(() => {
-                                const hpp = calcHPP(selectedRecipe.ingredients);
-                                return selectedRecipe.ingredients.map((ing) => {
+                                const hpp = calcHPP(selectedRecipe.ingredients, ingredientPrices);
+                                return selectedRecipe.ingredients.map((ing, index) => {
                                   const ip = ingredientPrices[ing.name];
                                   const subtotal = (ip?.price ?? 0) * ing.qty;
                                   const costPct = hpp > 0 ? (subtotal / hpp) * 100 : 0;
                                   return (
-                                    <tr key={ing.name} className="hover:bg-muted/30">
+                                    <tr key={ing.name} className="hover:bg-muted/30 transition-all duration-200 animate-slide-up" style={{ animationDelay: `${100 + index * 30}ms` }}>
                                       <td className="px-3 py-2.5 font-medium">{ing.name}</td>
                                       <td className="px-3 py-2.5 text-muted-foreground">{ip?.supplier ?? "-"}</td>
                                       <td className="px-3 py-2.5 text-center text-muted-foreground">{ing.qty}</td>
@@ -688,7 +421,7 @@ export default function MenuRecipePage() {
                               <tr className="border-t-2 border-border/60 bg-muted/50">
                                 <td colSpan={7} className="px-3 py-2.5 text-left">
                                   <span className="text-xs font-semibold text-muted-foreground">Total HPP:</span>
-                                  <span className="ml-2 text-sm font-bold">{formatRp(calcHPP(selectedRecipe.ingredients))}</span>
+                                  <span className="ml-2 text-sm font-bold">{formatRp(calcHPP(selectedRecipe.ingredients, ingredientPrices))}</span>
                                 </td>
                                 <td colSpan={1}></td>
                               </tr>
@@ -698,7 +431,7 @@ export default function MenuRecipePage() {
                       </div>
                     </div>
                   ) : (
-                    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground">
+                    <div className="flex h-full items-center justify-center p-6 text-center text-sm text-muted-foreground animate-fade-in">
                       Select a recipe to view BOM details
                     </div>
                   )}
@@ -709,7 +442,7 @@ export default function MenuRecipePage() {
             <>
               {/* ─── Menu Pricing ─── */}
               <div className="p-4 sm:p-6">
-                <Card>
+                <Card className="animate-slide-up" style={{ animationDelay: '0ms' }}>
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm font-semibold">Menu Pricing & Margin</CardTitle>
                   </CardHeader>
@@ -728,12 +461,12 @@ export default function MenuRecipePage() {
                         </tr>
                       </thead>
                       <tbody className="divide-y">
-                        {paginatedProducts.map((p) => {
+                        {paginatedProducts.map((p, index) => {
                           const margin = calcMargin(p.hpp, p.price);
                           const profit = p.price - p.hpp;
                           const isHealthy = margin >= 100;
                           return (
-                            <tr key={p.id}>
+                            <tr key={p.id} className="hover:bg-muted/30 transition-all duration-200 animate-slide-up" style={{ animationDelay: `${50 + index * 30}ms` }}>
                               <td className="py-2.5 font-medium">{p.name}</td>
                               <td className="py-2.5 text-muted-foreground">{p.category}</td>
                               <td className="py-2.5">{formatRp(p.hpp)}</td>
@@ -764,7 +497,7 @@ export default function MenuRecipePage() {
                     </div>
                     {/* Pagination */}
                     {filteredProducts.length > pricingPerPage && (
-                      <div className="mt-4 flex items-center justify-between">
+                      <div className="mt-4 flex items-center justify-between animate-slide-up" style={{ animationDelay: '350ms' }}>
                         <span className="text-xs text-muted-foreground">
                           Showing {(pricingPage - 1) * pricingPerPage + 1}–{Math.min(pricingPage * pricingPerPage, filteredProducts.length)} of {filteredProducts.length}
                         </span>
@@ -772,7 +505,7 @@ export default function MenuRecipePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 transition-all duration-200 hover:scale-110 active:scale-95"
                             disabled={pricingPage <= 1}
                             onClick={() => setPricingPage(pricingPage - 1)}
                           >
@@ -783,7 +516,10 @@ export default function MenuRecipePage() {
                               key={page}
                               variant={pricingPage === page ? "default" : "outline"}
                               size="sm"
-                              className={cn("h-7 min-w-[28px] px-1.5 text-xs", pricingPage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                              className={cn(
+                                "h-7 min-w-[28px] px-1.5 text-xs transition-all duration-200 hover:scale-110 active:scale-95",
+                                pricingPage === page ? "bg-slate-600 hover:bg-slate-700" : ""
+                              )}
                               onClick={() => setPricingPage(page)}
                             >
                               {page}
@@ -792,7 +528,7 @@ export default function MenuRecipePage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            className="h-7 w-7 p-0"
+                            className="h-7 w-7 p-0 transition-all duration-200 hover:scale-110 active:scale-95"
                             disabled={pricingPage >= pricingTotalPages}
                             onClick={() => setPricingPage(pricingPage + 1)}
                           >
@@ -882,7 +618,7 @@ export default function MenuRecipePage() {
             </div>
             <div className="flex gap-2 border-t px-6 py-4">
               <Button variant="outline" className="flex-1" onClick={() => setShowAddMenu(false)}>Cancel</Button>
-              <Button className="flex-1 bg-blue-600 hover:bg-blue-700" onClick={handleAddMenu}>Save</Button>
+              <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleAddMenu}>Save</Button>
             </div>
           </div>
         </div>

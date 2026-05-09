@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -16,50 +16,74 @@ import {
   Boxes,
   Receipt,
   ArrowLeftRight,
+  ChevronLeft,
+  ChevronRight,
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-/* ─── Mock Data ─── */
+type MovementType = "in" | "out" | "adjustment";
 
-const ingredients = [
-  { id: 1, name: "Kopi Arabica", unit: "gram", price: 120000, supplier: "PT Kopi Nusantara", stock: 3500, minStock: 1000 },
-  { id: 2, name: "Susu Full Cream", unit: "ml", price: 15000, supplier: "Indofood", stock: 8000, minStock: 2000 },
-  { id: 3, name: "Gula Pasir", unit: "gram", price: 12000, supplier: "Gulaku", stock: 12000, minStock: 5000 },
-  { id: 4, name: "Es Batu", unit: "kg", price: 8000, supplier: "CV Aneka Es", stock: 200, minStock: 50 },
-  { id: 5, name: "Nasi", unit: "gram", price: 10000, supplier: "PT Beras Jaya", stock: 25000, minStock: 10000 },
-  { id: 6, name: "Ayam Fillet", unit: "gram", price: 35000, supplier: "PT Sumber Protein", stock: 4500, minStock: 2000 },
-  { id: 7, name: "Minyak Goreng", unit: "ml", price: 18000, supplier: "Bimoli", stock: 6000, minStock: 3000 },
-  { id: 8, name: "Telur", unit: "pcs", price: 2500, supplier: "Peternakan Sejahtera", stock: 300, minStock: 100 },
-];
+type IngredientData = {
+  id: number;
+  name: string;
+  unit: string;
+  price: number;
+  supplier: string;
+  stock: number;
+  minStock: number;
+  in30d: number;
+  out30d: number;
+};
 
-const purchases = [
-  { id: "PO-2026-001", date: "03 Mei 2026", item: "Kopi Arabica", qty: 5000, unit: "gram", price: 120000, total: 600000, supplier: "PT Kopi Nusantara" },
-  { id: "PO-2026-002", date: "02 Mei 2026", item: "Susu Full Cream", qty: 10000, unit: "ml", price: 15000, total: 150000, supplier: "Indofood" },
-  { id: "PO-2026-003", date: "28 Apr 2026", item: "Gula Pasir", qty: 15000, unit: "gram", price: 12000, total: 180000, supplier: "Gulaku" },
-  { id: "PO-2026-004", date: "25 Apr 2026", item: "Ayam Fillet", qty: 5000, unit: "gram", price: 35000, total: 175000, supplier: "PT Sumber Protein" },
-];
+type PurchaseData = {
+  id: string;
+  date: string;
+  item: string;
+  qty: number;
+  unit: string;
+  price: number;
+  total: number;
+  supplier: string;
+};
 
-const stockMovements = [
-  { id: "MV-001", date: "03 Mei 2026", item: "Kopi Arabica", type: "out" as const, qty: 250, unit: "gram", ref: "Order #TX4491", user: "Budi" },
-  { id: "MV-002", date: "03 Mei 2026", item: "Susu Full Cream", type: "out" as const, qty: 500, unit: "ml", ref: "Order #TX4491", user: "Budi" },
-  { id: "MV-003", date: "02 Mei 2026", item: "Kopi Arabica", type: "in" as const, qty: 5000, unit: "gram", ref: "PO-2026-001", user: "Admin" },
-  { id: "MV-004", date: "02 Mei 2026", item: "Susu Full Cream", type: "in" as const, qty: 10000, unit: "ml", ref: "PO-2026-002", user: "Admin" },
-  { id: "MV-005", date: "01 Mei 2026", item: "Gula Pasir", type: "out" as const, qty: 300, unit: "gram", ref: "Waste/Rusak", user: "Rudi" },
-  { id: "MV-006", date: "01 Mei 2026", item: "Nasi", type: "out" as const, qty: 2000, unit: "gram", ref: "Order #TX4490", user: "Budi" },
-];
+type MovementData = {
+  id: string;
+  date: string;
+  item: string;
+  type: MovementType;
+  qty: number;
+  unit: string;
+  ref: string;
+  user: string;
+};
+
+type InventoryApiResponse = {
+  ingredients: IngredientData[];
+  purchases: PurchaseData[];
+  movements: MovementData[];
+};
 
 /* ─── Helpers ─── */
 
 const formatRp = (n: number) => `Rp. ${n.toLocaleString("id-ID")}`;
 
+function paginateData<T>(data: T[], page: number, perPage: number) {
+  const totalPages = Math.max(1, Math.ceil(data.length / perPage));
+  const safePage = Math.min(page, totalPages);
+  const paginated = data.slice((safePage - 1) * perPage, safePage * perPage);
+
+  return { totalPages, safePage, paginated };
+}
+
 export default function InventoryPage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState("ingredients");
 
-  const [ingredientsData, setIngredientsData] = useState(ingredients);
-  const [purchasesData, setPurchasesData] = useState(purchases);
-  const [movementsData, setMovementsData] = useState(stockMovements);
+  const [ingredientsData, setIngredientsData] = useState<IngredientData[]>([]);
+  const [purchasesData, setPurchasesData] = useState<PurchaseData[]>([]);
+  const [movementsData, setMovementsData] = useState<MovementData[]>([]);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const [showAddIngredient, setShowAddIngredient] = useState(false);
   const [showAddPurchase, setShowAddPurchase] = useState(false);
@@ -71,6 +95,12 @@ export default function InventoryPage() {
   const [newMovement, setNewMovement] = useState({ item: "", type: "in" as "in" | "out", qty: "", unit: "", ref: "", user: "" });
   const [restock, setRestock] = useState({ ingredientId: "", qty: "", ref: "" });
 
+  const [ingredientsPage, setIngredientsPage] = useState(1);
+  const [stockPage, setStockPage] = useState(1);
+  const [purchasePage, setPurchasePage] = useState(1);
+  const [movementPage, setMovementPage] = useState(1);
+  const perPage = 8;
+
   const closeAllModals = () => {
     setShowAddIngredient(false);
     setShowAddPurchase(false);
@@ -81,6 +111,23 @@ export default function InventoryPage() {
     setNewMovement({ item: "", type: "in" as "in" | "out", qty: "", unit: "", ref: "", user: "" });
     setRestock({ ingredientId: "", qty: "", ref: "" });
   };
+
+  const loadInventory = useCallback(async () => {
+    try {
+      const response = await fetch("/api/inventory", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch inventory");
+      }
+
+      const data = (await response.json()) as InventoryApiResponse;
+      setIngredientsData(data.ingredients);
+      setPurchasesData(data.purchases);
+      setMovementsData(data.movements);
+      setErrorMessage("");
+    } catch {
+      setErrorMessage("Failed to load inventory data");
+    }
+  }, []);
 
   const formatPrice = (val: string) => {
     const digits = val.replace(/\D/g, "");
@@ -104,12 +151,36 @@ export default function InventoryPage() {
     return () => window.removeEventListener("keydown", handleEsc);
   }, []);
 
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadInventory();
+    });
+  }, [loadInventory]);
+
   const filteredIngredients = ingredientsData.filter((i) =>
     i.name.toLowerCase().includes(search.toLowerCase()) ||
     i.supplier.toLowerCase().includes(search.toLowerCase())
   );
 
   const lowStock = ingredientsData.filter((i) => i.stock <= i.minStock);
+
+  const filteredPurchases = purchasesData.filter((p) =>
+    p.item.toLowerCase().includes(search.toLowerCase()) ||
+    p.supplier.toLowerCase().includes(search.toLowerCase()) ||
+    p.id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const filteredMovements = movementsData.filter((m) =>
+    m.item.toLowerCase().includes(search.toLowerCase()) ||
+    m.ref.toLowerCase().includes(search.toLowerCase()) ||
+    m.user.toLowerCase().includes(search.toLowerCase()) ||
+    m.id.toLowerCase().includes(search.toLowerCase())
+  );
+
+  const ingredientsPagination = paginateData(filteredIngredients, ingredientsPage, perPage);
+  const stockPagination = paginateData(filteredIngredients, stockPage, perPage);
+  const purchasePagination = paginateData(filteredPurchases, purchasePage, perPage);
+  const movementPagination = paginateData(filteredMovements, movementPage, perPage);
 
   const handleAddIngredient = () => {
     if (!newIngredient.name || !newIngredient.unit || !newIngredient.price) return;
@@ -212,7 +283,10 @@ export default function InventoryPage() {
         {/* Tab Navigation */}
         <div className="flex gap-1 border-b px-4 pt-4 sm:px-6">
           <button
-            onClick={() => setActiveTab("ingredients")}
+            onClick={() => {
+              setActiveTab("ingredients");
+              setIngredientsPage(1);
+            }}
             className={cn(
               "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
               activeTab === "ingredients"
@@ -223,7 +297,10 @@ export default function InventoryPage() {
             <Boxes className="mr-1.5 inline size-3.5" /> Master Bahan
           </button>
           <button
-            onClick={() => setActiveTab("stock")}
+            onClick={() => {
+              setActiveTab("stock");
+              setStockPage(1);
+            }}
             className={cn(
               "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
               activeTab === "stock"
@@ -234,7 +311,10 @@ export default function InventoryPage() {
             <Package className="mr-1.5 inline size-3.5" /> Stock Management
           </button>
           <button
-            onClick={() => setActiveTab("purchase")}
+            onClick={() => {
+              setActiveTab("purchase");
+              setPurchasePage(1);
+            }}
             className={cn(
               "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
               activeTab === "purchase"
@@ -245,7 +325,10 @@ export default function InventoryPage() {
             <Receipt className="mr-1.5 inline size-3.5" /> Purchase
           </button>
           <button
-            onClick={() => setActiveTab("movement")}
+            onClick={() => {
+              setActiveTab("movement");
+              setMovementPage(1);
+            }}
             className={cn(
               "rounded-t-lg px-3 py-2 text-xs sm:px-4 sm:py-2 sm:text-sm font-medium transition-colors",
               activeTab === "movement"
@@ -264,10 +347,20 @@ export default function InventoryPage() {
             <Input
               placeholder="Search ingredient, supplier..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setIngredientsPage(1);
+                setStockPage(1);
+                setPurchasePage(1);
+                setMovementPage(1);
+              }}
               className="h-9 w-full rounded-lg border-border bg-muted/50 pl-8 text-xs"
             />
           </div>
+        </div>
+
+        <div className="px-4 pt-2 sm:px-6">
+          {errorMessage && <p className="mt-1 text-xs text-red-600">{errorMessage}</p>}
         </div>
 
         <div className="flex-1 overflow-y-auto p-4 sm:p-6">
@@ -291,7 +384,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {filteredIngredients.map((i) => {
+                    {ingredientsPagination.paginated.map((i) => {
                       const isLow = i.stock <= i.minStock;
                       return (
                         <tr key={i.id} className="group">
@@ -317,6 +410,44 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
                 </div>
+                {filteredIngredients.length > perPage && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {(ingredientsPagination.safePage - 1) * perPage + 1}–{Math.min(ingredientsPagination.safePage * perPage, filteredIngredients.length)} of {filteredIngredients.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={ingredientsPagination.safePage <= 1}
+                        onClick={() => setIngredientsPage(ingredientsPagination.safePage - 1)}
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </Button>
+                      {Array.from({ length: ingredientsPagination.totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={ingredientsPagination.safePage === page ? "default" : "outline"}
+                          size="sm"
+                          className={cn("h-7 min-w-[28px] px-1.5 text-xs", ingredientsPagination.safePage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                          onClick={() => setIngredientsPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={ingredientsPagination.safePage >= ingredientsPagination.totalPages}
+                        onClick={() => setIngredientsPage(ingredientsPagination.safePage + 1)}
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -326,17 +457,17 @@ export default function InventoryPage() {
             <>
             {/* Alert Cards */}
             {lowStock.length > 0 && (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                 {lowStock.map((i) => (
                   <Card key={i.id} className="border-red-200 bg-red-50/50">
-                    <CardContent className="p-3">
-                      <div className="flex items-center gap-2">
-                        <AlertTriangle className="size-4 text-red-500" />
-                        <span className="text-xs font-semibold text-red-700">Low Stock</span>
+                    <CardContent className="p-2.5">
+                      <div className="flex items-center gap-1.5">
+                        <AlertTriangle className="size-3.5 text-red-500" />
+                        <span className="text-[11px] font-semibold text-red-700">Low Stock</span>
                       </div>
-                      <p className="mt-1 text-sm font-bold">{i.name}</p>
-                      <p className="text-[11px] text-muted-foreground">{i.stock.toLocaleString("id-ID")} {i.unit} (min: {i.minStock.toLocaleString("id-ID")})</p>
-                      <Button size="sm" variant="outline" className="mt-2 h-7 text-[11px] border-red-300 text-red-700 hover:bg-red-100">
+                      <p className="mt-0.5 text-xs font-bold">{i.name}</p>
+                      <p className="text-[10px] text-muted-foreground">{i.stock.toLocaleString("id-ID")} {i.unit} (min: {i.minStock.toLocaleString("id-ID")})</p>
+                      <Button size="sm" variant="outline" className="mt-1.5 h-6 text-[10px] border-red-300 px-2 text-red-700 hover:bg-red-100">
                         Restock
                       </Button>
                     </CardContent>
@@ -362,7 +493,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {filteredIngredients.map((i) => (
+                    {stockPagination.paginated.map((i) => (
                       <tr key={i.id}>
                         <td className="py-2.5 font-medium">{i.name}</td>
                         <td className={cn("py-2.5 font-semibold", i.stock <= i.minStock ? "text-red-600" : "text-emerald-600")}>
@@ -372,13 +503,13 @@ export default function InventoryPage() {
                         <td className="py-2.5 text-emerald-600">
                           <span className="flex items-center gap-1">
                             <ArrowDownLeft className="size-3" />
-                            {(i.stock * 0.4).toFixed(0)} {i.unit}
+                            {i.in30d.toLocaleString("id-ID")} {i.unit}
                           </span>
                         </td>
                         <td className="py-2.5 text-red-500">
                           <span className="flex items-center gap-1">
                             <ArrowUpRight className="size-3" />
-                            {(i.stock * 0.25).toFixed(0)} {i.unit}
+                            {i.out30d.toLocaleString("id-ID")} {i.unit}
                           </span>
                         </td>
                       </tr>
@@ -386,6 +517,44 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
                 </div>
+                {filteredIngredients.length > perPage && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {(stockPagination.safePage - 1) * perPage + 1}–{Math.min(stockPagination.safePage * perPage, filteredIngredients.length)} of {filteredIngredients.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={stockPagination.safePage <= 1}
+                        onClick={() => setStockPage(stockPagination.safePage - 1)}
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </Button>
+                      {Array.from({ length: stockPagination.totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={stockPagination.safePage === page ? "default" : "outline"}
+                          size="sm"
+                          className={cn("h-7 min-w-[28px] px-1.5 text-xs", stockPagination.safePage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                          onClick={() => setStockPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={stockPagination.safePage >= stockPagination.totalPages}
+                        onClick={() => setStockPage(stockPagination.safePage + 1)}
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
             </>
@@ -412,7 +581,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {purchasesData.map((p) => (
+                    {purchasePagination.paginated.map((p) => (
                       <tr key={p.id}>
                         <td className="py-2.5 font-medium">{p.id}</td>
                         <td className="py-2.5 text-muted-foreground">{p.date}</td>
@@ -426,6 +595,44 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
                 </div>
+                {filteredPurchases.length > perPage && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {(purchasePagination.safePage - 1) * perPage + 1}–{Math.min(purchasePagination.safePage * perPage, filteredPurchases.length)} of {filteredPurchases.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={purchasePagination.safePage <= 1}
+                        onClick={() => setPurchasePage(purchasePagination.safePage - 1)}
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </Button>
+                      {Array.from({ length: purchasePagination.totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={purchasePagination.safePage === page ? "default" : "outline"}
+                          size="sm"
+                          className={cn("h-7 min-w-[28px] px-1.5 text-xs", purchasePagination.safePage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                          onClick={() => setPurchasePage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={purchasePagination.safePage >= purchasePagination.totalPages}
+                        onClick={() => setPurchasePage(purchasePagination.safePage + 1)}
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}
@@ -451,7 +658,7 @@ export default function InventoryPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y">
-                    {movementsData.map((m) => (
+                    {movementPagination.paginated.map((m) => (
                       <tr key={m.id}>
                         <td className="py-2.5 font-medium">{m.id}</td>
                         <td className="py-2.5 text-muted-foreground">{m.date}</td>
@@ -463,7 +670,9 @@ export default function InventoryPage() {
                               "text-[10px]",
                               m.type === "in"
                                 ? "border-emerald-200 bg-emerald-50 text-emerald-600"
-                                : "border-red-200 bg-red-50 text-red-600"
+                                : m.type === "out"
+                                  ? "border-red-200 bg-red-50 text-red-600"
+                                  : "border-amber-200 bg-amber-50 text-amber-700"
                             )}
                           >
                             {m.type === "in" ? (
@@ -471,11 +680,17 @@ export default function InventoryPage() {
                             ) : (
                               <ArrowUpRight className="mr-1 size-3" />
                             )}
-                            {m.type === "in" ? "Masuk" : "Keluar"}
+                            {m.type === "in" ? "Masuk" : m.type === "out" ? "Keluar" : "Adjustment"}
                           </Badge>
                         </td>
-                        <td className={cn("py-2.5 font-semibold", m.type === "in" ? "text-emerald-600" : "text-red-600")}>
-                          {m.type === "in" ? "+" : "-"}{m.qty.toLocaleString("id-ID")} {m.unit}
+                        <td
+                          className={cn(
+                            "py-2.5 font-semibold",
+                            m.type === "in" ? "text-emerald-600" : m.type === "out" ? "text-red-600" : "text-amber-700"
+                          )}
+                        >
+                          {m.type === "in" ? "+" : m.type === "out" ? "-" : "±"}
+                          {m.qty.toLocaleString("id-ID")} {m.unit}
                         </td>
                         <td className="py-2.5 text-muted-foreground">{m.ref}</td>
                         <td className="py-2.5 text-muted-foreground">{m.user}</td>
@@ -484,6 +699,44 @@ export default function InventoryPage() {
                   </tbody>
                 </table>
                 </div>
+                {filteredMovements.length > perPage && (
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-xs text-muted-foreground">
+                      Showing {(movementPagination.safePage - 1) * perPage + 1}–{Math.min(movementPagination.safePage * perPage, filteredMovements.length)} of {filteredMovements.length}
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={movementPagination.safePage <= 1}
+                        onClick={() => setMovementPage(movementPagination.safePage - 1)}
+                      >
+                        <ChevronLeft className="size-3.5" />
+                      </Button>
+                      {Array.from({ length: movementPagination.totalPages }, (_, i) => i + 1).map((page) => (
+                        <Button
+                          key={page}
+                          variant={movementPagination.safePage === page ? "default" : "outline"}
+                          size="sm"
+                          className={cn("h-7 min-w-[28px] px-1.5 text-xs", movementPagination.safePage === page ? "bg-slate-600 hover:bg-slate-700" : "")}
+                          onClick={() => setMovementPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 w-7 p-0"
+                        disabled={movementPagination.safePage >= movementPagination.totalPages}
+                        onClick={() => setMovementPage(movementPagination.safePage + 1)}
+                      >
+                        <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

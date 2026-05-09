@@ -1,10 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -53,7 +54,39 @@ interface BoardOrder {
   menuItems?: { name: string; qty: number; price: number; variant?: string; sugar?: string; note?: string }[];
 }
 
-const categories = ["All", "Appetizer", "Main Dish", "Beverage", "Snack", "Dessert"];
+type PaymentMethod = "cash" | "qris" | "card" | "midtrans" | "e_wallet" | "transfer";
+
+type PosMenuItem = {
+  id: number;
+  name: string;
+  price: number;
+  category: string;
+  image: string;
+};
+
+type MenuApiResponse = {
+  products: Array<{
+    id: number;
+    name: string;
+    category: string;
+    price: number;
+  }>;
+};
+
+function createOrderCode() {
+  return `TRX-${Date.now()}`;
+}
+
+function getMenuInitials(name: string) {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+
+  if (words.length === 0) return "--";
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+
+  return `${words[0][0]}${words[1][0]}`.toUpperCase();
+}
+
+const fallbackMenuImage = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80";
 
 const memberList = [
   { id: 1, name: "Budi Santoso", phone: "0812-3456-7890" },
@@ -64,191 +97,12 @@ const memberList = [
   { id: 6, name: "Lina Marlina", phone: "0899-1122-3344" },
 ];
 
-const menuItems = [
-  // Main Dish
-  {
-    id: 1,
-    name: "Nasi Goreng",
-    price: 35000,
-    image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80",
-    category: "Main Dish",
-  },
-  {
-    id: 4,
-    name: "Ayam Goreng",
-    price: 40000,
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&q=80",
-    category: "Main Dish",
-  },
-  {
-    id: 5,
-    name: "Mie Goreng",
-    price: 32000,
-    image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80",
-    category: "Main Dish",
-  },
-  {
-    id: 6,
-    name: "Sate Ayam",
-    price: 38000,
-    image: "https://images.unsplash.com/photo-1529563021893-cc83c992d75d?w=400&q=80",
-    category: "Main Dish",
-  },
-  {
-    id: 7,
-    name: "Rendang",
-    price: 55000,
-    image: "https://images.unsplash.com/photo-1606387015493-1d4b047b659c?w=400&q=80",
-    category: "Main Dish",
-  },
-  // Beverage
-  {
-    id: 2,
-    name: "Kopi Susu",
-    price: 22000,
-    image: "https://images.unsplash.com/photo-1461023058943-07fcbe16d735?w=400&q=80",
-    category: "Beverage",
-  },
-  {
-    id: 3,
-    name: "Es Buah",
-    price: 26000,
-    image: "https://images.unsplash.com/photo-1513558161293-cdaf765ed2fd?w=400&q=80",
-    category: "Beverage",
-  },
-  {
-    id: 8,
-    name: "Es Teh",
-    price: 8000,
-    image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80",
-    category: "Beverage",
-  },
-  {
-    id: 9,
-    name: "Jus Jeruk",
-    price: 18000,
-    image: "https://images.unsplash.com/photo-1558857563-b371033873b8?w=400&q=80",
-    category: "Beverage",
-  },
-  {
-    id: 10,
-    name: "Kopi Hitam",
-    price: 15000,
-    image: "https://images.unsplash.com/photo-1514432324607-a09d9b4aefdd?w=400&q=80",
-    category: "Beverage",
-  },
-  // Appetizer
-  {
-    id: 11,
-    name: "Gado-Gado",
-    price: 25000,
-    image: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&q=80",
-    category: "Appetizer",
-  },
-  {
-    id: 12,
-    name: "Bakso",
-    price: 28000,
-    image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400&q=80",
-    category: "Appetizer",
-  },
-  {
-    id: 13,
-    name: "Soto",
-    price: 30000,
-    image: "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400&q=80",
-    category: "Appetizer",
-  },
-  {
-    id: 14,
-    name: "Lumpia",
-    price: 20000,
-    image: "https://images.unsplash.com/photo-1505253758473-96b701f8fb89?w=400&q=80",
-    category: "Appetizer",
-  },
-  {
-    id: 15,
-    name: "Risoles",
-    price: 18000,
-    image: "https://images.unsplash.com/photo-1563245372-f21724e3856d?w=400&q=80",
-    category: "Appetizer",
-  },
-  // Snack
-  {
-    id: 16,
-    name: "Klepon",
-    price: 15000,
-    image: "https://images.unsplash.com/photo-1558857563-b371033873b8?w=400&q=80",
-    category: "Snack",
-  },
-  {
-    id: 17,
-    name: "Onde-Onde",
-    price: 16000,
-    image: "https://images.unsplash.com/photo-1556679343-c7306c1976bc?w=400&q=80",
-    category: "Snack",
-  },
-  {
-    id: 18,
-    name: "Pisang Goreng",
-    price: 18000,
-    image: "https://images.unsplash.com/photo-1558857563-b371033873b8?w=400&q=80",
-    category: "Snack",
-  },
-  {
-    id: 19,
-    name: "Roti Bakar",
-    price: 20000,
-    image: "https://images.unsplash.com/photo-1563729784474-d77dbb933a9e?w=400&q=80",
-    category: "Snack",
-  },
-  {
-    id: 20,
-    name: "Martabak",
-    price: 25000,
-    image: "https://images.unsplash.com/photo-1534353473418-4cfa6c56fd38?w=400&q=80",
-    category: "Snack",
-  },
-  // Dessert
-  {
-    id: 21,
-    name: "Es Krim",
-    price: 25000,
-    image: "https://images.unsplash.com/photo-1505253758473-96b701f8fb89?w=400&q=80",
-    category: "Dessert",
-  },
-  {
-    id: 22,
-    name: "Pudding",
-    price: 20000,
-    image: "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80",
-    category: "Dessert",
-  },
-  {
-    id: 23,
-    name: "Bolu",
-    price: 35000,
-    image: "https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&q=80",
-    category: "Dessert",
-  },
-  {
-    id: 24,
-    name: "Donat",
-    price: 22000,
-    image: "https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=400&q=80",
-    category: "Dessert",
-  },
-  {
-    id: 25,
-    name: "Cake",
-    price: 45000,
-    image: "https://images.unsplash.com/photo-1529563021893-cc83c992d75d?w=400&q=80",
-    category: "Dessert",
-  },
-];
 
 export default function PosPage() {
   const [activeCategory, setActiveCategory] = useState("All");
+  const [menuItems, setMenuItems] = useState<PosMenuItem[]>([]);
+  const [menuLoading, setMenuLoading] = useState(true);
+  const [menuError, setMenuError] = useState("");
   const [cart, setCart] = useState<CartItem[]>([]);
   const [menuQuantities, setMenuQuantities] = useState<Record<number, number>>({});
   const [menuSearch, setMenuSearch] = useState("");
@@ -260,7 +114,7 @@ export default function PosPage() {
   const [selectedSugar, setSelectedSugar] = useState<Record<number, string>>({});
   const [editingCartItem, setEditingCartItem] = useState<number | null>(null);
   const [selectedPromo, setSelectedPromo] = useState("");
-  const [paymentMethod, setPaymentMethod] = useState("cash");
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>("cash");
   const [cashAmount, setCashAmount] = useState("");
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [showMidtransQRModal, setShowMidtransQRModal] = useState(false);
@@ -269,6 +123,9 @@ export default function PosPage() {
   const [midtransRedirectUrl, setMidtransRedirectUrl] = useState("");
   const [midtransLoading, setMidtransLoading] = useState(false);
   const [midtransError, setMidtransError] = useState("");
+  const [orderSaving, setOrderSaving] = useState(false);
+  const [orderSaveError, setOrderSaveError] = useState("");
+  const [activeOrderCode, setActiveOrderCode] = useState("");
   const [activeTab, setActiveTab] = useState<"new" | "list" | "table">("new");
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
@@ -318,6 +175,42 @@ export default function PosPage() {
     BUNDLE20: { label: "BUNDLE20", calc: (sub) => Math.round(sub * 0.2) },
   };
 
+  const loadMenuList = useCallback(async () => {
+    try {
+      const response = await fetch("/api/menu", { cache: "no-store" });
+      if (!response.ok) {
+        throw new Error("Failed to fetch menu list");
+      }
+
+      const data = (await response.json()) as MenuApiResponse;
+      const mapped = (data.products || []).map((product) => ({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: product.price,
+        image: fallbackMenuImage,
+      }));
+
+      setMenuItems(mapped);
+      setMenuError("");
+    } catch {
+      setMenuError("Failed to load menu list");
+    } finally {
+      setMenuLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      void loadMenuList();
+    });
+  }, [loadMenuList]);
+
+  const categories = [
+    "All",
+    ...Array.from(new Set(menuItems.map((item) => item.category))).sort((a, b) => a.localeCompare(b)),
+  ];
+
   const filteredMenu = menuItems
     .filter((item) => activeCategory === "All" || item.category === activeCategory)
     .filter((item) => item.name.toLowerCase().includes(menuSearch.toLowerCase()));
@@ -335,7 +228,7 @@ export default function PosPage() {
     }));
   };
 
-  const addToCart = (item: typeof menuItems[0]) => {
+  const addToCart = (item: PosMenuItem) => {
     const qty = menuQuantities[item.id] || 1;
     const variant = selectedVariants[item.id] || "Regular";
     const sugar = selectedSugar[item.id] || "Normal Sugar";
@@ -361,7 +254,7 @@ export default function PosPage() {
           price: item.price,
           qty,
           note: "",
-          image: item.image.replace("?w=400&q=80", "?w=100&q=80"),
+          image: item.image,
         },
       ];
     });
@@ -421,10 +314,66 @@ export default function PosPage() {
     });
   };
 
-  const buildOrderId = () => `TRX-${Date.now()}`;
+  const saveOrderToDb = async (paymentStatus: "pending" | "paid", methodOverride?: PaymentMethod) => {
+    const orderCode = activeOrderCode || createOrderCode();
+    const payment = methodOverride || paymentMethod;
+
+    setOrderSaving(true);
+    setOrderSaveError("");
+    setActiveOrderCode(orderCode);
+
+    try {
+      const response = await fetch("/api/pos", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          orderCode,
+          customerName,
+          memberName: isMember ? customerName : undefined,
+          orderType,
+          tableNumber,
+          cashierName: "Jennie Doe",
+          paymentMethod: payment,
+          paymentStatus,
+          provider: payment === "midtrans" ? "midtrans" : undefined,
+          providerTxId: orderCode,
+          subtotal,
+          discount,
+          taxes,
+          serviceAmount: 0,
+          total,
+          items: cart.map((item) => ({
+            menuId: item.id,
+            name: item.name,
+            variant: item.variant,
+            sugar: item.sugar,
+            price: item.price,
+            qty: item.qty,
+            note: item.note,
+          })),
+        }),
+      });
+
+      const data = (await response.json()) as { error?: string; orderCode?: string };
+      if (!response.ok) {
+        throw new Error(data.error || "Failed to save order");
+      }
+
+      return data.orderCode || orderCode;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Failed to save order";
+      setOrderSaveError(message);
+      throw error;
+    } finally {
+      setOrderSaving(false);
+    }
+  };
 
   const handleMidtransPayNow = async () => {
-    const orderId = buildOrderId();
+    const orderId = activeOrderCode || createOrderCode();
+    setActiveOrderCode(orderId);
     setMidtransLoading(true);
     setMidtransError("");
 
@@ -647,6 +596,16 @@ export default function PosPage() {
             </div>
           </div>
 
+          <div className="mb-3">
+            {menuLoading ? (
+              <p className="text-xs text-muted-foreground">Loading menu...</p>
+            ) : menuError ? (
+              <p className="text-xs text-red-600">{menuError}</p>
+            ) : (
+              <p className="text-xs text-muted-foreground">{filteredMenu.length} menu items</p>
+            )}
+          </div>
+
           {/* Categories */}
           <div className="mb-4 flex gap-2 flex-wrap">
             {categories.map((cat) => (
@@ -671,14 +630,12 @@ export default function PosPage() {
           >
             {filteredMenu.map((item) => (
               <Card key={item.id} className="flex flex-col gap-0 overflow-hidden rounded-none border-0 py-0 shadow-none transition-transform duration-500 hover:-translate-y-0.5">
-                <div className="relative aspect-square w-full overflow-hidden shrink-0">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    width={400}
-                    height={400}
-                    className="block h-full w-full object-cover object-center transition-transform duration-700 hover:scale-[1.03]"
-                  />
+                <div className="flex aspect-square w-full shrink-0 items-center justify-center bg-muted/40">
+                  <Avatar className="size-20 border-none after:hidden">
+                    <AvatarFallback className="bg-primary/10 text-xl font-semibold tracking-wide text-primary">
+                      {getMenuInitials(item.name)}
+                    </AvatarFallback>
+                  </Avatar>
                 </div>
                 <CardContent className="p-2">
                   <p className="text-sm font-medium leading-tight">{item.name}</p>
@@ -1046,12 +1003,12 @@ export default function PosPage() {
               {cart.map((item, index) => (
                 <div key={index}>
                   <div className="flex gap-3 py-3">
-                    <div className="relative size-14 shrink-0 overflow-hidden rounded-lg">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="h-full w-full object-cover"
-                      />
+                    <div className="relative size-14 shrink-0">
+                      <Avatar className="size-14 border-none after:hidden">
+                        <AvatarFallback className="bg-primary/10 text-sm font-semibold tracking-wide text-primary">
+                          {getMenuInitials(item.name)}
+                        </AvatarFallback>
+                      </Avatar>
                     </div>
                     <div className="flex-1">
                       <div className="flex items-start justify-between">
@@ -1193,7 +1150,7 @@ export default function PosPage() {
         <div className="border-t p-4">
           <h3 className="mb-3 text-sm font-semibold">Payment Details</h3>
           <div className="space-y-3">
-            <Select value={paymentMethod} onValueChange={(val) => { if (val) setPaymentMethod(val); }}>
+            <Select value={paymentMethod} onValueChange={(val) => { if (val) setPaymentMethod(val as PaymentMethod); }}>
               <SelectTrigger className="h-9 w-full rounded-lg text-sm">
                 <div className="flex items-center gap-2">
                   <Wallet className="size-4" />
@@ -1272,6 +1229,7 @@ export default function PosPage() {
             onClick={() => {
               setMidtransError("");
               setMidtransRedirectUrl("");
+              setOrderSaveError("");
               setShowConfirmModal(true);
             }}
           >
@@ -1334,12 +1292,17 @@ export default function PosPage() {
               </Button>
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                disabled={midtransLoading}
+                disabled={midtransLoading || orderSaving}
                 onClick={async () => {
                   if (paymentMethod === "cash") {
-                    setShowConfirmModal(false);
-                    setReceiptOrderId(`#${Date.now().toString().slice(-4)}`);
-                    setShowReceiptModal(true);
+                    try {
+                      const savedOrderCode = await saveOrderToDb("paid", "cash");
+                      setShowConfirmModal(false);
+                      setReceiptOrderId(`#${savedOrderCode.slice(-4)}`);
+                      setShowReceiptModal(true);
+                    } catch {
+                      return;
+                    }
                     return;
                   }
 
@@ -1352,9 +1315,14 @@ export default function PosPage() {
                   setShowMidtransQRModal(true);
                 }}
               >
-                {midtransLoading ? "Processing..." : "Pay Now"}
+                {midtransLoading || orderSaving ? "Processing..." : "Pay Now"}
               </Button>
             </div>
+            {orderSaveError && (
+              <p className="mt-3 rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-700">
+                {orderSaveError}
+              </p>
+            )}
           </div>
         </div>
       )}
@@ -1395,6 +1363,11 @@ export default function PosPage() {
               <p className="text-center text-sm text-muted-foreground">
                 Scan QR dari halaman Midtrans lalu lanjutkan setelah pembayaran sukses.
               </p>
+              {orderSaveError && (
+                <p className="w-full rounded-md border border-red-200 bg-red-50 px-2 py-1.5 text-xs text-red-700">
+                  {orderSaveError}
+                </p>
+              )}
             </div>
             <div className="flex gap-2">
               <Button
@@ -1404,21 +1377,26 @@ export default function PosPage() {
                   setShowMidtransQRModal(false);
                   setMidtransRedirectUrl("");
                   setMidtransError("");
+                  setActiveOrderCode("");
                 }}
               >
                 Cancel
               </Button>
               <Button
                 className="flex-1 bg-blue-600 hover:bg-blue-700"
-                onClick={() => {
-                  setShowMidtransQRModal(false);
-                  if (!receiptOrderId) {
-                    setReceiptOrderId(`#${Date.now().toString().slice(-4)}`);
+                disabled={orderSaving}
+                onClick={async () => {
+                  try {
+                    const savedOrderCode = await saveOrderToDb("paid", paymentMethod);
+                    setShowMidtransQRModal(false);
+                    setReceiptOrderId(`#${savedOrderCode.slice(-4)}`);
+                    setShowReceiptModal(true);
+                  } catch {
+                    return;
                   }
-                  setShowReceiptModal(true);
                 }}
               >
-                Payment Complete
+                {orderSaving ? "Saving..." : "Payment Complete"}
               </Button>
             </div>
           </div>
@@ -1621,6 +1599,8 @@ export default function PosPage() {
                   setCashAmount("");
                   setEditingCartItem(null);
                   setMenuQuantities({});
+                  setOrderSaveError("");
+                  setActiveOrderCode("");
                 }}
               >
                 Print & Save

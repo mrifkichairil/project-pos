@@ -32,7 +32,7 @@ const navItems = [
 ];
 
 const bottomNav = [
-  { icon: Settings, label: "Settings", href: "#" },
+  { icon: Settings, label: "Settings", href: "/settings" },
   { icon: HelpCircle, label: "Help Center", href: "#" },
 ];
 
@@ -89,9 +89,6 @@ export default function AppShell({ children }: { children: ReactNode }) {
               >
                 <item.icon className="size-4" />
                 <span>{item.label}</span>
-                {item.hasSubmenu && (
-                  <ChevronDown className="ml-auto size-4" />
-                )}
               </Link>
             );
           })}
