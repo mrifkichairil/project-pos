@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const connectMock = vi.fn();
+const requireTenantScopeMock = vi.fn();
 
 vi.mock("@/lib/db", () => ({
   db: {
@@ -8,9 +9,33 @@ vi.mock("@/lib/db", () => ({
   },
 }));
 
+vi.mock("@/lib/tenant-scope", () => ({
+  requireTenantScope: requireTenantScopeMock,
+}));
+
+describe("POS route tenant scope", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("returns 401 when tenant scope is unavailable", async () => {
+    requireTenantScopeMock.mockResolvedValue({
+      error: Response.json({ error: "Unauthorized" }, { status: 401 }),
+    });
+
+    const { GET } = await import("./route");
+    const response = await GET(new Request("http://localhost/api/pos"));
+
+    expect(response.status).toBe(401);
+  });
+});
+
 describe("PATCH /api/pos payment update", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    requireTenantScopeMock.mockResolvedValue({
+      context: { tenantId: 1, userId: 1, role: "admin", isFallback: false },
+    });
   });
 
   it("updates payment to paid without reusing $1 across mixed SQL contexts", async () => {
@@ -19,8 +44,9 @@ describe("PATCH /api/pos payment update", () => {
         return { rows: [] };
       }
 
-      if (sql.includes("SELECT id, status FROM sales_orders")) {
-        return { rows: [{ id: 101, status: "open" }] };
+      if (sql.includes("SELECT id, status, member_id, total_amount::text, order_code FROM sales_orders")) {
+        expect(params).toEqual(["ORD-0001", 1]);
+        return { rows: [{ id: 101, status: "open", member_id: null, total_amount: "10000", order_code: "ORD-0001" }] };
       }
 
       if (sql.includes("UPDATE order_payments")) {
@@ -65,6 +91,6 @@ describe("PATCH /api/pos payment update", () => {
 
     const body = await response.json();
     expect(response.status).toBe(200);
-    expect(body).toEqual({ success: true });
+    expect(body).toEqual({ success: true, pointsEarned: 0 });
   });
 });

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireTenantScope } from "@/lib/tenant-scope";
 
 type SettingsRow = {
   store_name: string;
@@ -34,9 +35,13 @@ type UpdatePayload = {
 };
 
 export async function GET() {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   try {
     const result = await db.query<SettingsRow>(
-      `SELECT store_name, address, wifi_password, pb1_enabled, pb1_rate, service_enabled, service_rate, ppn_enabled, ppn_rate, qris_image_url, inventory_policy, point_value, point_per_rupiah FROM settings WHERE id = 1`
+      `SELECT store_name, address, wifi_password, pb1_enabled, pb1_rate, service_enabled, service_rate, ppn_enabled, ppn_rate, qris_image_url, inventory_policy, point_value, point_per_rupiah FROM settings WHERE tenant_id = $1`,
+      [tenant.context.tenantId]
     );
 
     if (result.rows.length === 0) {
@@ -79,6 +84,9 @@ export async function GET() {
 }
 
 export async function PUT(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   try {
     const body = (await request.json()) as UpdatePayload;
 
@@ -97,23 +105,40 @@ export async function PUT(request: Request) {
     const pointPerRupiah = Number(body.pointPerRupiah) || 1000;
 
     await db.query(
-      `UPDATE settings SET
-        store_name = $1,
-        address = $2,
-        wifi_password = $3,
-        pb1_enabled = $4,
-        pb1_rate = $5,
-        service_enabled = $6,
-        service_rate = $7,
-        ppn_enabled = $8,
-        ppn_rate = $9,
-        qris_image_url = $10,
-        inventory_policy = $11,
-        point_value = $12,
-        point_per_rupiah = $13,
-        updated_at = NOW()
-      WHERE id = 1`,
-      [storeName, address, wifiPassword, pb1Enabled, pb1Rate, serviceEnabled, serviceRate, ppnEnabled, ppnRate, qrisImageUrl, inventoryPolicy, pointValue, pointPerRupiah]
+      `
+        INSERT INTO settings (
+          tenant_id,
+          store_name,
+          address,
+          wifi_password,
+          pb1_enabled,
+          pb1_rate,
+          service_enabled,
+          service_rate,
+          ppn_enabled,
+          ppn_rate,
+          qris_image_url,
+          inventory_policy,
+          point_value,
+          point_per_rupiah
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ON CONFLICT (tenant_id) DO UPDATE SET
+          store_name = EXCLUDED.store_name,
+          address = EXCLUDED.address,
+          wifi_password = EXCLUDED.wifi_password,
+          pb1_enabled = EXCLUDED.pb1_enabled,
+          pb1_rate = EXCLUDED.pb1_rate,
+          service_enabled = EXCLUDED.service_enabled,
+          service_rate = EXCLUDED.service_rate,
+          ppn_enabled = EXCLUDED.ppn_enabled,
+          ppn_rate = EXCLUDED.ppn_rate,
+          qris_image_url = EXCLUDED.qris_image_url,
+          inventory_policy = EXCLUDED.inventory_policy,
+          point_value = EXCLUDED.point_value,
+          point_per_rupiah = EXCLUDED.point_per_rupiah,
+          updated_at = NOW()
+      `,
+      [tenant.context.tenantId, storeName, address, wifiPassword, pb1Enabled, pb1Rate, serviceEnabled, serviceRate, ppnEnabled, ppnRate, qrisImageUrl, inventoryPolicy, pointValue, pointPerRupiah]
     );
 
     return NextResponse.json({ success: true });

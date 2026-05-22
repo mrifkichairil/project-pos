@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireTenantScope } from "@/lib/tenant-scope";
 
 type MenuIngredientPayload = {
   name?: string;
@@ -27,7 +28,12 @@ type EditMenuPayload = {
 type PgError = Error & { code?: string };
 
 export async function GET() {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   try {
+    const tenantId = tenant.context.tenantId;
+
     const [recipesResult, productsResult, ingredientsResult, lowStockMenusResult, addonsResult, settingsResult] = await Promise.all([
       db.query<{
         id: number;
@@ -54,9 +60,11 @@ export async function GET() {
         LEFT JOIN menu_ingredients mi ON mi.menu_id = m.id
         LEFT JOIN ingredients i ON i.id = mi.ingredient_id
         WHERE m.is_active = TRUE
+          AND m.tenant_id = $1
         GROUP BY m.id, m.name, m.category
         ORDER BY m.id
-      `),
+      `,
+      [tenantId]),
       db.query<{
         id: number;
         name: string;
@@ -73,8 +81,10 @@ export async function GET() {
         FROM menus m
         JOIN menu_prices mp ON mp.menu_id = m.id AND mp.is_active = TRUE
         WHERE m.is_active = TRUE
+          AND m.tenant_id = $1
         ORDER BY m.id
-      `),
+      `,
+      [tenantId]),
       db.query<{
         name: string;
         base_unit: string;
@@ -90,27 +100,37 @@ export async function GET() {
           stock
         FROM ingredients
         WHERE is_active = TRUE
+          AND tenant_id = $1
         ORDER BY name
-      `),
+      `,
+      [tenantId]),
       db.query<{ menu_id: number; ingredient_name: string }>(`
         SELECT DISTINCT mi.menu_id, i.name AS ingredient_name
         FROM menu_ingredients mi
         JOIN ingredients i ON i.id = mi.ingredient_id
+        JOIN menus m ON m.id = mi.menu_id
         WHERE i.is_active = TRUE
+          AND i.tenant_id = $1
+          AND m.tenant_id = $1
           AND i.stock <= (CASE
             WHEN i.base_unit = 'pcs' THEN 100
             WHEN i.base_unit IN ('kg', 'liter') THEN 20
             ELSE 1000
           END)
-      `),
+      `,
+      [tenantId]),
       db.query<{ menu_id: number; addon_id: number; addon_name: string; addon_price: string }>(`
         SELECT maa.menu_id, a.id AS addon_id, a.name AS addon_name, a.price::text AS addon_price
         FROM menu_addon_assignments maa
         JOIN addons a ON a.id = maa.addon_id AND a.is_active = TRUE
+        WHERE maa.tenant_id = $1
+          AND a.tenant_id = $1
         ORDER BY maa.menu_id, a.name
-      `),
+      `,
+      [tenantId]),
       db.query<{ inventory_policy: string }>(
-        `SELECT inventory_policy FROM settings WHERE id = 1`
+        `SELECT inventory_policy FROM settings WHERE tenant_id = $1`,
+        [tenantId]
       ),
     ]);
 
@@ -180,6 +200,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   const body = (await request.json()) as CreateMenuPayload;
 
   const name = body.name?.trim();
@@ -206,11 +229,11 @@ export async function POST(request: Request) {
 
     const menuInsert = await client.query<{ id: number }>(
       `
-        INSERT INTO menus (name, category)
-        VALUES ($1, $2)
+        INSERT INTO menus (tenant_id, name, category)
+        VALUES ($1, $2, $3)
         RETURNING id
       `,
-      [name, category]
+      [tenant.context.tenantId, name, category]
     );
 
     const menuId = menuInsert.rows[0].id;
@@ -225,9 +248,11 @@ export async function POST(request: Request) {
       `
         SELECT id, name, base_unit, price_per_unit
         FROM ingredients
-        WHERE name = ANY($1::text[]) AND is_active = TRUE
+        WHERE name = ANY($1::text[])
+          AND is_active = TRUE
+          AND tenant_id = $2
       `,
-      [ingredientNames]
+      [ingredientNames, tenant.context.tenantId]
     );
 
     const ingredientMap = new Map(ingredientRows.rows.map((row) => [row.name, row]));
@@ -271,8 +296,8 @@ export async function POST(request: Request) {
     const addonIds = Array.isArray(body.addonIds) ? body.addonIds.filter((id) => Number.isFinite(id) && id > 0) : [];
     for (const addonId of addonIds) {
       await client.query(
-        `INSERT INTO menu_addon_assignments (menu_id, addon_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-        [menuId, addonId]
+        `INSERT INTO menu_addon_assignments (tenant_id, menu_id, addon_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+        [tenant.context.tenantId, menuId, addonId]
       );
     }
 
@@ -310,6 +335,9 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   const body = (await request.json()) as EditMenuPayload;
 
   const menuId = Number(body.id);
@@ -337,8 +365,8 @@ export async function PATCH(request: Request) {
 
     // Verify menu exists
     const existing = await client.query<{ id: number }>(
-      `SELECT id FROM menus WHERE id = $1 AND is_active = TRUE`,
-      [menuId]
+      `SELECT id FROM menus WHERE id = $1 AND tenant_id = $2 AND is_active = TRUE`,
+      [menuId, tenant.context.tenantId]
     );
     if (existing.rows.length === 0) {
       await client.query("ROLLBACK");
@@ -360,9 +388,9 @@ export async function PATCH(request: Request) {
         values.push(category);
       }
 
-      values.push(menuId);
+      values.push(menuId, tenant.context.tenantId);
       await client.query(
-        `UPDATE menus SET ${setClauses.join(", ")} WHERE id = $${paramIdx}`,
+        `UPDATE menus SET ${setClauses.join(", ")} WHERE id = $${paramIdx} AND tenant_id = $${paramIdx + 1}`,
         values
       );
     }
@@ -380,8 +408,8 @@ export async function PATCH(request: Request) {
         base_unit: string;
         price_per_unit: string;
       }>(
-        `SELECT id, name, base_unit, price_per_unit FROM ingredients WHERE name = ANY($1::text[]) AND is_active = TRUE`,
-        [ingredientNames]
+        `SELECT id, name, base_unit, price_per_unit FROM ingredients WHERE name = ANY($1::text[]) AND is_active = TRUE AND tenant_id = $2`,
+        [ingredientNames, tenant.context.tenantId]
       );
 
       const ingredientMap = new Map(ingredientRows.rows.map((row) => [row.name, row]));
@@ -442,13 +470,13 @@ export async function PATCH(request: Request) {
 
     // Update addon assignments (replace all)
     if (Array.isArray(body.addonIds)) {
-      await client.query(`DELETE FROM menu_addon_assignments WHERE menu_id = $1`, [menuId]);
+      await client.query(`DELETE FROM menu_addon_assignments WHERE menu_id = $1 AND tenant_id = $2`, [menuId, tenant.context.tenantId]);
 
       const addonIds = body.addonIds.filter((id) => Number.isFinite(id) && id > 0);
       for (const addonId of addonIds) {
         await client.query(
-          `INSERT INTO menu_addon_assignments (menu_id, addon_id) VALUES ($1, $2) ON CONFLICT DO NOTHING`,
-          [menuId, addonId]
+          `INSERT INTO menu_addon_assignments (tenant_id, menu_id, addon_id) VALUES ($1, $2, $3) ON CONFLICT DO NOTHING`,
+          [tenant.context.tenantId, menuId, addonId]
         );
       }
     }

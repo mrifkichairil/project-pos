@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { requireTenantScope } from "@/lib/tenant-scope";
 
 type PosOrderItemPayload = {
   menuId?: number;
@@ -88,6 +89,10 @@ const parseOrderMeta = (notes: string | null) => {
 };
 
 export async function GET(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
+  const tenantId = tenant.context.tenantId;
   const { searchParams } = new URL(request.url);
   const rawLimit = Number(searchParams.get("limit") || "30");
   const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(Math.trunc(rawLimit), 1), 100) : 30;
@@ -96,7 +101,7 @@ export async function GET(request: Request) {
   const endDate = searchParams.get("endDate") || "";
 
   let dateCondition = "so.order_at::date = CURRENT_DATE";
-  const params: Array<number | string> = [limit];
+  const params: Array<number | string> = [tenantId, limit];
 
   if (period === "weekly") {
     dateCondition = "so.order_at >= date_trunc('week', NOW()) AND so.order_at < date_trunc('week', NOW()) + INTERVAL '1 week'";
@@ -104,7 +109,7 @@ export async function GET(request: Request) {
     dateCondition = "so.order_at >= date_trunc('month', NOW()) AND so.order_at < date_trunc('month', NOW()) + INTERVAL '1 month'";
   } else if (period === "custom" && startDate && endDate) {
     params.push(startDate, endDate);
-    dateCondition = "so.order_at >= $2::date AND so.order_at < ($3::date + INTERVAL '1 day')";
+    dateCondition = "so.order_at >= $3::date AND so.order_at < ($4::date + INTERVAL '1 day')";
   }
 
   try {
@@ -150,9 +155,10 @@ export async function GET(request: Request) {
           ORDER BY osh.changed_at DESC, osh.id DESC
           LIMIT 1
         ) kanban ON TRUE
-        WHERE ${dateCondition}
+        WHERE so.tenant_id = $1
+          AND ${dateCondition}
         ORDER BY so.order_at DESC
-        LIMIT $1
+        LIMIT $2
       `,
       params
     );
@@ -197,6 +203,10 @@ export async function GET(request: Request) {
 }
 
 export async function PATCH(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
+  const tenantId = tenant.context.tenantId;
   const client = await db.connect();
 
   try {
@@ -209,8 +219,8 @@ export async function PATCH(request: Request) {
     await client.query("BEGIN");
 
     const existing = await client.query<{ id: number; status: "draft" | "open" | "paid" | "cancelled" | "refunded"; member_id: number | null; total_amount: string; order_code: string }>(
-      `SELECT id, status, member_id, total_amount::text, order_code FROM sales_orders WHERE order_code = $1 LIMIT 1`,
-      [body.orderCode]
+      `SELECT id, status, member_id, total_amount::text, order_code FROM sales_orders WHERE order_code = $1 AND tenant_id = $2 LIMIT 1`,
+      [body.orderCode, tenantId]
     );
 
     const row = existing.rows[0];
@@ -295,7 +305,8 @@ export async function PATCH(request: Request) {
     let earnedPointsPatch = 0;
     if (body.paymentStatus === "paid" && row.member_id) {
       const pointsSettingResult = await client.query<{ point_per_rupiah: number; point_value: number }>(
-        `SELECT point_per_rupiah, point_value FROM settings WHERE id = 1`
+        `SELECT point_per_rupiah, point_value FROM settings WHERE tenant_id = $1`,
+        [tenantId]
       );
       const pointsSetting = pointsSettingResult.rows[0];
       if (pointsSetting && pointsSetting.point_per_rupiah > 0) {
@@ -305,8 +316,8 @@ export async function PATCH(request: Request) {
         if (pointsEarned > 0) {
           // Check if points already awarded for this order (avoid double)
           const existingPoints = await client.query(
-            `SELECT 1 FROM member_transactions WHERE transaction_code = $1 LIMIT 1`,
-            [row.order_code]
+            `SELECT 1 FROM member_transactions WHERE transaction_code = $1 AND tenant_id = $2 LIMIT 1`,
+            [row.order_code, tenantId]
           );
           if (existingPoints.rows.length === 0) {
             // Get item summary
@@ -317,15 +328,15 @@ export async function PATCH(request: Request) {
             const itemSummary = itemsResult.rows[0]?.summary || "-";
 
             const txResult = await client.query<{ id: number }>(
-              `INSERT INTO member_transactions (member_id, transaction_code, transaction_date, item_summary, amount)
-               VALUES ($1, $2, CURRENT_DATE, $3, $4) RETURNING id`,
-              [row.member_id, row.order_code, itemSummary, orderTotal]
+              `INSERT INTO member_transactions (tenant_id, member_id, transaction_code, transaction_date, item_summary, amount)
+               VALUES ($1, $2, $3, CURRENT_DATE, $4, $5) RETURNING id`,
+              [tenantId, row.member_id, row.order_code, itemSummary, orderTotal]
             );
 
             await client.query(
-              `INSERT INTO member_point_ledger (member_id, transaction_id, entry_type, description, points_delta)
-               VALUES ($1, $2, 'earn', $3, $4)`,
-              [row.member_id, txResult.rows[0].id, `Pembelian ${row.order_code}`, pointsEarned]
+              `INSERT INTO member_point_ledger (tenant_id, member_id, transaction_id, entry_type, description, points_delta)
+               VALUES ($1, $2, $3, 'earn', $4, $5)`,
+              [tenantId, row.member_id, txResult.rows[0].id, `Pembelian ${row.order_code}`, pointsEarned]
             );
 
             await client.query(
@@ -335,8 +346,8 @@ export async function PATCH(request: Request) {
                 total_spending = total_spending + $2,
                 last_visit_at = CURRENT_DATE,
                 updated_at = NOW()
-              WHERE id = $3`,
-              [pointsEarned, orderTotal, row.member_id]
+              WHERE id = $3 AND tenant_id = $4`,
+              [pointsEarned, orderTotal, row.member_id, tenantId]
             );
           }
         }
@@ -356,6 +367,10 @@ export async function PATCH(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
+  const tenantId = tenant.context.tenantId;
   const client = await db.connect();
 
   try {
@@ -374,8 +389,8 @@ export async function POST(request: Request) {
     let memberId: number | null = null;
     if (body.memberName) {
       const memberResult = await client.query<{ id: number }>(
-        `SELECT id FROM members WHERE name = $1 AND is_active = TRUE ORDER BY id LIMIT 1`,
-        [body.memberName]
+        `SELECT id FROM members WHERE name = $1 AND tenant_id = $2 AND is_active = TRUE ORDER BY id LIMIT 1`,
+        [body.memberName, tenantId]
       );
       memberId = memberResult.rows[0]?.id ?? null;
     }
@@ -385,6 +400,7 @@ export async function POST(request: Request) {
     const orderResult = await client.query<{ id: number }>(
       `
         INSERT INTO sales_orders (
+          tenant_id,
           order_code,
           member_id,
           order_at,
@@ -399,10 +415,11 @@ export async function POST(request: Request) {
           ppn_amount,
           total_amount,
           notes
-        ) VALUES ($1, $2, NOW(), $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+        ) VALUES ($1, $2, $3, NOW(), $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
         RETURNING id
       `,
       [
+        tenantId,
         body.orderCode,
         memberId,
         body.cashierName,
@@ -422,7 +439,8 @@ export async function POST(request: Request) {
     const salesOrderId = orderResult.rows[0].id;
 
     const menuMapResult = await client.query<{ id: number; name: string }>(
-      `SELECT id, name FROM menus WHERE is_active = TRUE`
+      `SELECT id, name FROM menus WHERE tenant_id = $1 AND is_active = TRUE`,
+      [tenantId]
     );
     const menuMap = new Map(menuMapResult.rows.map((row) => [row.name.toLowerCase(), row.id]));
 
@@ -515,7 +533,8 @@ export async function POST(request: Request) {
     let earnedPoints = 0;
     if (body.paymentStatus === "paid" && memberId) {
       const pointsSettingResult = await client.query<{ point_per_rupiah: number; point_value: number }>(
-        `SELECT point_per_rupiah, point_value FROM settings WHERE id = 1`
+        `SELECT point_per_rupiah, point_value FROM settings WHERE tenant_id = $1`,
+        [tenantId]
       );
       const pointsSetting = pointsSettingResult.rows[0];
       if (pointsSetting && pointsSetting.point_per_rupiah > 0) {
@@ -524,16 +543,16 @@ export async function POST(request: Request) {
         if (pointsEarned > 0) {
           // Record member transaction
           const txResult = await client.query<{ id: number }>(
-            `INSERT INTO member_transactions (member_id, transaction_code, transaction_date, item_summary, amount)
-             VALUES ($1, $2, CURRENT_DATE, $3, $4) RETURNING id`,
-            [memberId, body.orderCode, body.items.map(i => `${i.name} x${i.qty}`).join(", "), body.total]
+            `INSERT INTO member_transactions (tenant_id, member_id, transaction_code, transaction_date, item_summary, amount)
+             VALUES ($1, $2, $3, CURRENT_DATE, $4, $5) RETURNING id`,
+            [tenantId, memberId, body.orderCode, body.items.map(i => `${i.name} x${i.qty}`).join(", "), body.total]
           );
 
           // Record point ledger entry
           await client.query(
-            `INSERT INTO member_point_ledger (member_id, transaction_id, entry_type, description, points_delta)
-             VALUES ($1, $2, 'earn', $3, $4)`,
-            [memberId, txResult.rows[0].id, `Pembelian ${body.orderCode}`, pointsEarned]
+            `INSERT INTO member_point_ledger (tenant_id, member_id, transaction_id, entry_type, description, points_delta)
+             VALUES ($1, $2, $3, 'earn', $4, $5)`,
+            [tenantId, memberId, txResult.rows[0].id, `Pembelian ${body.orderCode}`, pointsEarned]
           );
 
           // Update member balance, visit count, total spending
@@ -544,8 +563,8 @@ export async function POST(request: Request) {
               total_spending = total_spending + $2,
               last_visit_at = CURRENT_DATE,
               updated_at = NOW()
-            WHERE id = $3`,
-            [pointsEarned, body.total, memberId]
+            WHERE id = $3 AND tenant_id = $4`,
+            [pointsEarned, body.total, memberId, tenantId]
           );
         }
       }
@@ -572,8 +591,11 @@ export async function POST(request: Request) {
           mi.unit AS recipe_unit
         FROM menu_ingredients mi
         JOIN ingredients i ON i.id = mi.ingredient_id
+        JOIN menus m ON m.id = mi.menu_id
         WHERE mi.menu_id = ANY($1::bigint[])
-      `, [orderedMenuIds]);
+          AND m.tenant_id = $2
+          AND i.tenant_id = $2
+      `, [orderedMenuIds, tenantId]);
 
       // Group recipes by menu_id
       const recipesByMenu = new Map<number, Array<{ ingredientId: number; name: string; qty: number; unit: string }>>();
@@ -604,17 +626,17 @@ export async function POST(request: Request) {
 
           // Deduct stock
           await client.query(
-            `UPDATE ingredients SET stock = GREATEST(0, stock - $1), updated_at = NOW() WHERE id = $2`,
-            [totalQty, ing.ingredientId]
+            `UPDATE ingredients SET stock = GREATEST(0, stock - $1), updated_at = NOW() WHERE id = $2 AND tenant_id = $3`,
+            [totalQty, ing.ingredientId, tenantId]
           );
 
           // Record stock movement
           const mvCode = `MV-${body.orderCode}-${String(movementSeq).padStart(3, "0")}`;
           await client.query(
-            `INSERT INTO stock_movements (movement_code, movement_date, ingredient_id, movement_type, qty, unit, reference_type, reference_code, notes, created_by)
-             VALUES ($1, CURRENT_DATE, $2, 'out', $3, $4, 'sales_order', $5, $6, $7)
+            `INSERT INTO stock_movements (tenant_id, movement_code, movement_date, ingredient_id, movement_type, qty, unit, reference_type, reference_code, notes, created_by)
+             VALUES ($1, $2, CURRENT_DATE, $3, 'out', $4, $5, 'sales_order', $6, $7, $8)
              ON CONFLICT (movement_code) DO NOTHING`,
-            [mvCode, ing.ingredientId, totalQty, ing.unit, body.orderCode, `Pemakaian order ${body.orderCode}`, body.cashierName]
+            [tenantId, mvCode, ing.ingredientId, totalQty, ing.unit, body.orderCode, `Pemakaian order ${body.orderCode}`, body.cashierName]
           );
         }
       }
