@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,7 +10,6 @@ import { Eye } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -27,6 +25,7 @@ export default function LoginPage() {
     try {
       const res = await fetch("/api/auth/login", {
         method: "POST",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
@@ -36,12 +35,8 @@ export default function LoginPage() {
         return;
       }
       toast.success("Login berhasil!");
-      // Redirect based on role
-      if (data.user?.role === "cashier") {
-        router.push("/pos");
-      } else {
-        router.push("/dashboard");
-      }
+      const redirectTo = data.user?.role === "cashier" ? "/pos" : "/dashboard";
+      window.location.assign(redirectTo);
     } catch {
       toast.error("Login gagal");
     } finally {

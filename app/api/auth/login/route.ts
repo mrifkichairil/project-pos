@@ -71,9 +71,13 @@ export async function POST(request: Request) {
       user: { id: user.id, name: user.fullname, email: user.email, role: user.role },
     });
 
+    const requestUrl = new URL(request.url);
+    const forwardedProto = request.headers.get("x-forwarded-proto")?.split(",")[0]?.trim();
+    const isHttps = forwardedProto ? forwardedProto === "https" : requestUrl.protocol === "https:";
+
     response.cookies.set("session_token", sessionToken, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isHttps,
       sameSite: "lax",
       expires: expiresAt,
       path: "/",

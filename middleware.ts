@@ -41,9 +41,7 @@ export function middleware(request: NextRequest) {
   );
 
   if (!isKnown) {
-    const url = request.nextUrl.clone();
-    url.pathname = "/404";
-    return NextResponse.redirect(url);
+    return NextResponse.redirect(new URL("/404", request.url));
   }
 
   // Check authentication for protected routes
@@ -55,9 +53,7 @@ export function middleware(request: NextRequest) {
     const sessionToken = request.cookies.get("session_token")?.value;
 
     if (!sessionToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/", request.url));
     }
   }
 
@@ -65,9 +61,7 @@ export function middleware(request: NextRequest) {
   if (pathname === "/") {
     const sessionToken = request.cookies.get("session_token")?.value;
     if (sessionToken) {
-      const url = request.nextUrl.clone();
-      url.pathname = "/dashboard";
-      return NextResponse.redirect(url);
+      return NextResponse.redirect(new URL("/dashboard", request.url));
     }
   }
 

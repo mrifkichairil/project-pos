@@ -11,8 +11,8 @@ VALUES (3, 'Warung A-2', 'Jl. Gatot Subroto No. 5, Jakarta', 'warungA2pass', TRU
 
 -- ============ USERS ============
 INSERT INTO users (id, fullname, username, email, password, role, active_tenant_id, is_active) VALUES
-  (8, 'Kasir A2-1', 'kasir_a2_1', 'kasir1@warunga2.com', '$2a$10$placeholder', 'cashier', 3, TRUE),
-  (9, 'Kasir A2-2', 'kasir_a2_2', 'kasir2@warunga2.com', '$2a$10$placeholder', 'cashier', 3, TRUE);
+  (8, 'Kasir A2-1', 'kasir_a2_1', 'kasir1@warunga2.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 3, TRUE),
+  (9, 'Kasir A2-2', 'kasir_a2_2', 'kasir2@warunga2.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 3, TRUE);
 SELECT setval('users_id_seq', 9);
 
 INSERT INTO user_tenants (user_id, tenant_id, role, is_default) VALUES

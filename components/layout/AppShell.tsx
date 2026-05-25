@@ -124,7 +124,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
             >
               <div className="flex items-center gap-2">
                 <Building2 className="size-3.5 text-muted-foreground" />
-                <span className="truncate">{currentUser.tenantName || "No Tenant"}</span>
+                <span className="truncate">{currentUser?.tenantName || "No Tenant"}</span>
               </div>
               <ChevronDown className={cn("size-3.5 text-muted-foreground transition-transform", showTenantSwitcher && "rotate-180")} />
             </button>
@@ -136,7 +136,7 @@ export default function AppShell({ children }: { children: ReactNode }) {
                     onClick={() => handleSwitchTenant(t.id)}
                     className={cn(
                       "flex w-full items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted",
-                      currentUser.tenantId === t.id && "bg-primary/10 font-medium text-primary"
+                      currentUser?.tenantId === t.id && "bg-primary/10 font-medium text-primary"
                     )}
                   >
                     <Building2 className="size-3 text-muted-foreground" />

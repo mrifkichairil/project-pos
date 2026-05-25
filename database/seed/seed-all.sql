@@ -13,15 +13,15 @@ VALUES
   (2, 'Warung B', 'Jl. Sudirman No. 25, Bandung', 'warungB2026', TRUE, 10, TRUE, 5, FALSE, 11, '', 'medium', 1, 10000);
 
 -- ============ USERS (password = bcrypt hash of 'password') ============
--- Hash: $2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG
+-- Hash: $2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m
 INSERT INTO users (id, fullname, username, email, password, role, active_tenant_id, is_active) VALUES
-  (1, 'Super Admin', 'admin', 'admin@system.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'admin', NULL, TRUE),
-  (2, 'Manager Warung A', 'manager_a', 'manager@warunga.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'manager', 1, TRUE),
-  (3, 'Kasir A1', 'kasir_a1', 'kasir1@warunga.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'cashier', 1, TRUE),
-  (4, 'Kasir A2', 'kasir_a2', 'kasir2@warunga.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'cashier', 1, TRUE),
-  (5, 'Manager Warung B', 'manager_b', 'manager@warungb.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'manager', 2, TRUE),
-  (6, 'Kasir B1', 'kasir_b1', 'kasir1@warungb.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'cashier', 2, TRUE),
-  (7, 'Kasir B2', 'kasir_b2', 'kasir2@warungb.com', '$2a$10$8KzaNdKIMyOkASCBRPOJVeJf1sWL1Fj3MIgNpGkzRqQz1FZm5IbG', 'cashier', 2, TRUE);
+  (1, 'Super Admin', 'admin', 'admin@system.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'admin', NULL, TRUE),
+  (2, 'Manager Warung A', 'manager_a', 'manager@warunga.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'manager', 1, TRUE),
+  (3, 'Kasir A1', 'kasir_a1', 'kasir1@warunga.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 1, TRUE),
+  (4, 'Kasir A2', 'kasir_a2', 'kasir2@warunga.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 1, TRUE),
+  (5, 'Manager Warung B', 'manager_b', 'manager@warungb.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'manager', 2, TRUE),
+  (6, 'Kasir B1', 'kasir_b1', 'kasir1@warungb.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 2, TRUE),
+  (7, 'Kasir B2', 'kasir_b2', 'kasir2@warungb.com', '$2b$10$sFKuC1SaZ9S4RHB70GOBeumjE9U2iDTlMkfjeAjF0sBzGtaOLed7m', 'cashier', 2, TRUE);
 SELECT setval('users_id_seq', 7);
 
 -- ============ USER_TENANTS ============
