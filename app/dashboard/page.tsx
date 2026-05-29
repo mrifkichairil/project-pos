@@ -146,13 +146,13 @@ export default function DashboardPage() {
 
       <div className="flex-1 overflow-y-auto p-4 sm:p-6">
         {/* Period Filter */}
-        <div className="mb-4 flex flex-wrap items-center gap-2">
+        <div className="mb-4 flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {periods.map((p) => (
             <Button
               key={p.value}
               variant={period === p.value ? "default" : "outline"}
               size="sm"
-              className={cn("h-8 rounded-lg text-xs", period === p.value && "bg-primary text-primary-foreground")}
+              className={cn("h-8 shrink-0 rounded-lg text-xs whitespace-nowrap", period === p.value && "bg-primary text-primary-foreground")}
               onClick={() => handlePeriodChange(p.value)}
             >
               {p.label}
@@ -164,7 +164,7 @@ export default function DashboardPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className={cn("ml-2 h-8 gap-1.5 rounded-lg text-xs", period === "custom" && "border-primary text-primary")}
+                  className={cn("ml-2 h-8 shrink-0 gap-1.5 rounded-lg text-xs whitespace-nowrap", period === "custom" && "border-primary text-primary")}
                 />
               }
             >

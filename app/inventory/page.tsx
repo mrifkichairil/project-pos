@@ -414,8 +414,42 @@ export default function InventoryPage() {
                 <CardTitle className="text-sm font-semibold">Stock Overview</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[400px] text-left text-xs md:min-w-[500px]">
+                {/* Mobile card view */}
+                <div className="space-y-3 md:hidden">
+                  {stockPagination.paginated.map((i) => {
+                    const isLow = i.stock <= i.minStock;
+                    return (
+                      <div key={i.id} className="rounded-lg border p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold">{i.name}</span>
+                          {isLow ? (
+                            <Badge variant="outline" className="border-red-200 bg-red-50 text-[10px] text-red-600">
+                              <AlertTriangle className="mr-1 size-3" /> Low
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-[10px] text-emerald-600">
+                              OK
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                          <div><span className="text-muted-foreground">Satuan:</span> <span className="font-medium">{i.unit}</span></div>
+                          <div><span className="text-muted-foreground">Harga:</span> <span className="font-medium">{formatRp(i.price)}/{i.unit}</span></div>
+                          <div><span className="text-muted-foreground">Supplier:</span> <span className="font-medium">{i.supplier}</span></div>
+                          <div><span className="text-muted-foreground">Minimum:</span> <span className="font-medium">{i.minStock.toLocaleString("id-ID")} {i.unit}</span></div>
+                          <div><span className="text-muted-foreground">Stok:</span> <span className={cn("font-semibold", isLow ? "text-red-600" : "text-emerald-600")}>{i.stock.toLocaleString("id-ID")} {i.unit}</span></div>
+                          <div className="flex gap-3">
+                            <span className="text-emerald-600 flex items-center gap-0.5"><ArrowDownLeft className="size-3" />{i.in30d.toLocaleString("id-ID")}</span>
+                            <span className="text-red-500 flex items-center gap-0.5"><ArrowUpRight className="size-3" />{i.out30d.toLocaleString("id-ID")}</span>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Desktop table view */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b text-muted-foreground">
                         <th className="pb-2 font-medium">Nama Bahan</th>
@@ -521,8 +555,27 @@ export default function InventoryPage() {
                 <CardTitle className="text-sm font-semibold">Purchase History</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[500px] text-left text-xs md:min-w-[600px]">
+                {/* Mobile card view */}
+                <div className="space-y-3 md:hidden">
+                  {purchasePagination.paginated.map((p) => (
+                    <div key={p.id} className="rounded-lg border p-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-semibold text-primary">{p.id}</span>
+                        <span className="text-[11px] text-muted-foreground">{p.date}</span>
+                      </div>
+                      <p className="text-sm font-medium">{p.item}</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                        <div><span className="text-muted-foreground">Qty:</span> <span className="font-medium">{p.qty.toLocaleString("id-ID")} {p.unit}</span></div>
+                        <div><span className="text-muted-foreground">Harga:</span> <span className="font-medium">{formatRp(p.price)}/{p.unit}</span></div>
+                        <div><span className="text-muted-foreground">Total:</span> <span className="font-semibold">{formatRp(p.total)}</span></div>
+                        <div><span className="text-muted-foreground">Supplier:</span> <span className="font-medium">{p.supplier}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table view */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b text-muted-foreground">
                         <th className="pb-2 font-medium">ID PO</th>
@@ -615,8 +668,44 @@ export default function InventoryPage() {
                 </Select>
               </CardHeader>
               <CardContent>
-                <div className="overflow-x-auto">
-                  <table className="w-full min-w-[400px] text-left text-xs md:min-w-[500px]">
+                {/* Mobile card view */}
+                <div className="space-y-3 md:hidden">
+                  {movementPagination.paginated.map((m) => (
+                    <div key={m.id} className="rounded-lg border p-3 space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <span className="text-xs font-medium text-muted-foreground">{m.id}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[10px]",
+                            m.type === "in"
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-600"
+                              : m.type === "out"
+                                ? "border-red-200 bg-red-50 text-red-600"
+                                : "border-amber-200 bg-amber-50 text-amber-700"
+                          )}
+                        >
+                          {m.type === "in" ? "Masuk" : m.type === "out" ? "Keluar" : "Adjustment"}
+                        </Badge>
+                      </div>
+                      <p className="text-sm font-medium">{m.item}</p>
+                      <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                        <div><span className="text-muted-foreground">Tanggal:</span> <span className="font-medium">{m.date}</span></div>
+                        <div>
+                          <span className="text-muted-foreground">Qty:</span>{" "}
+                          <span className={cn("font-semibold", m.type === "in" ? "text-emerald-600" : m.type === "out" ? "text-red-600" : "text-amber-700")}>
+                            {m.type === "in" ? "+" : m.type === "out" ? "-" : "±"}{m.qty.toLocaleString("id-ID")} {m.unit}
+                          </span>
+                        </div>
+                        <div><span className="text-muted-foreground">Ref:</span> <span className="font-medium">{m.ref}</span></div>
+                        <div><span className="text-muted-foreground">User:</span> <span className="font-medium">{m.user}</span></div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {/* Desktop table view */}
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full text-left text-xs">
                     <thead>
                       <tr className="border-b text-muted-foreground">
                         <th className="pb-2 font-medium">ID</th>
@@ -733,7 +822,7 @@ export default function InventoryPage() {
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Unit</Label>
                   <select
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                     value={newIngredient.unit}
                     onChange={(e) => setNewIngredient({ ...newIngredient, unit: e.target.value })}
                   >
@@ -755,7 +844,7 @@ export default function InventoryPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Supplier</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={newIngredient.supplier}
                   onChange={(e) => setNewIngredient({ ...newIngredient, supplier: e.target.value })}
                 >
@@ -811,7 +900,7 @@ export default function InventoryPage() {
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Unit</Label>
                   <select
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                     value={newPurchase.unit}
                     onChange={(e) => setNewPurchase({ ...newPurchase, unit: e.target.value })}
                   >
@@ -833,7 +922,7 @@ export default function InventoryPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Supplier</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={newPurchase.supplier}
                   onChange={(e) => setNewPurchase({ ...newPurchase, supplier: e.target.value })}
                 >
@@ -874,7 +963,7 @@ export default function InventoryPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Item Name</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={newMovement.item}
                   onChange={(e) => {
                     const ing = ingredientsData.find(i => i.name === e.target.value);
@@ -912,7 +1001,7 @@ export default function InventoryPage() {
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Unit</Label>
                   <select
-                    className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                     value={newMovement.unit}
                     onChange={(e) => setNewMovement({ ...newMovement, unit: e.target.value })}
                   >
@@ -934,7 +1023,7 @@ export default function InventoryPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">User</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={newMovement.user}
                   onChange={(e) => setNewMovement({ ...newMovement, user: e.target.value })}
                 >
@@ -968,7 +1057,7 @@ export default function InventoryPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Ingredient</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={restock.ingredientId}
                   onChange={(e) => setRestock({ ...restock, ingredientId: e.target.value })}
                 >

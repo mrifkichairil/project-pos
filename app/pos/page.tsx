@@ -1,6 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
+import type { DateRange } from "react-day-picker";
+import { Calendar as CalendarPicker } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +37,7 @@ import {
   Plus as AddIcon,
   Info,
   X,
+  CalendarDays,
 } from "lucide-react";
 
 interface CartItem {
@@ -222,6 +227,7 @@ export default function PosPage() {
   const [boardDateFilter, setBoardDateFilter] = useState<"today" | "weekly" | "monthly" | "custom">("today");
   const [boardCustomStartDate, setBoardCustomStartDate] = useState("");
   const [boardCustomEndDate, setBoardCustomEndDate] = useState("");
+  const [boardDateRange, setBoardDateRange] = useState<DateRange | undefined>(undefined);
 
   const [tables, setTables] = useState<PosTable[]>([]);
   const [tablesLoading, setTablesLoading] = useState(true);
@@ -756,6 +762,7 @@ export default function PosPage() {
     setBoardDateFilter("today");
     setBoardCustomStartDate("");
     setBoardCustomEndDate("");
+    setBoardDateRange(undefined);
   };
 
   const saveOrderToDb = async (paymentStatus: "pending" | "paid", methodOverride?: PaymentMethod) => {
@@ -935,7 +942,7 @@ export default function PosPage() {
               className="h-9 rounded-lg border-border bg-muted/50 pl-9 text-sm"
             />
           </div>
-          <div className="flex items-center gap-1 text-xs text-muted-foreground sm:gap-1.5 sm:text-sm">
+          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground sm:ml-0 sm:gap-1.5 sm:text-sm">
             <Calendar className="size-3.5 sm:size-4" />
             <span className="hidden sm:inline">
               {currentTime.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
@@ -1093,7 +1100,7 @@ export default function PosPage() {
           </div>
 
           {/* Categories */}
-          <div className="mb-4 flex gap-2 flex-wrap">
+          <div className="mb-4 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
             {categories.map((cat) => {
               const count = cat === "All" ? menuItems.length : menuItems.filter((m) => m.category === cat).length;
               return (
@@ -1177,58 +1184,75 @@ export default function PosPage() {
             <div className="flex h-full flex-col gap-4">
               <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <h2 className="text-base font-semibold">Order Board</h2>
-                <div className="flex flex-wrap items-center gap-2">
+                <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-hide">
                   <Button
                     type="button"
                     variant={boardDateFilter === "today" ? "default" : "outline"}
-                    className="h-8 px-3 text-xs"
+                    size="sm"
+                    className={cn("h-8 shrink-0 rounded-lg px-3 text-xs whitespace-nowrap", boardDateFilter === "today" && "bg-primary text-primary-foreground")}
                     onClick={() => setBoardDateFilter("today")}
                   >
-                    Today
+                    Hari Ini
                   </Button>
                   <Button
                     type="button"
                     variant={boardDateFilter === "weekly" ? "default" : "outline"}
-                    className="h-8 px-3 text-xs"
+                    size="sm"
+                    className={cn("h-8 shrink-0 rounded-lg px-3 text-xs whitespace-nowrap", boardDateFilter === "weekly" && "bg-primary text-primary-foreground")}
                     onClick={() => setBoardDateFilter("weekly")}
                   >
-                    Weekly
+                    Minggu Ini
                   </Button>
                   <Button
                     type="button"
                     variant={boardDateFilter === "monthly" ? "default" : "outline"}
-                    className="h-8 px-3 text-xs"
+                    size="sm"
+                    className={cn("h-8 shrink-0 rounded-lg px-3 text-xs whitespace-nowrap", boardDateFilter === "monthly" && "bg-primary text-primary-foreground")}
                     onClick={() => setBoardDateFilter("monthly")}
                   >
-                    Monthly
+                    Bulan Ini
                   </Button>
-                  <Button
-                    type="button"
-                    variant={boardDateFilter === "custom" ? "default" : "outline"}
-                    className="h-8 px-3 text-xs"
-                    onClick={() => setBoardDateFilter("custom")}
-                  >
-                    Custom Range
-                  </Button>
+                  <Popover>
+                    <PopoverTrigger
+                      render={
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className={cn("h-8 shrink-0 gap-1.5 rounded-lg px-3 text-xs whitespace-nowrap", boardDateFilter === "custom" && "border-primary text-primary")}
+                        />
+                      }
+                    >
+                      <CalendarDays className="size-3.5" />
+                      {boardDateFilter === "custom" && boardDateRange?.from ? (
+                        boardDateRange.to ? (
+                          <span>{format(boardDateRange.from, "dd MMM yyyy")} - {format(boardDateRange.to, "dd MMM yyyy")}</span>
+                        ) : (
+                          <span>{format(boardDateRange.from, "dd MMM yyyy")}</span>
+                        )
+                      ) : (
+                        <span>{new Date().toLocaleDateString("id-ID")}</span>
+                      )}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="end">
+                      <CalendarPicker
+                        mode="range"
+                        defaultMonth={boardDateRange?.from}
+                        selected={boardDateRange}
+                        onSelect={(range) => {
+                          setBoardDateRange(range);
+                          if (range?.from && range?.to) {
+                            setBoardDateFilter("custom");
+                            setBoardCustomStartDate(format(range.from, "yyyy-MM-dd"));
+                            setBoardCustomEndDate(format(range.to, "yyyy-MM-dd"));
+                          }
+                        }}
+                        numberOfMonths={2}
+                        disabled={(date) => date > new Date()}
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
               </div>
-
-              {boardDateFilter === "custom" && (
-                <div className="flex flex-wrap items-center gap-2">
-                  <Input
-                    type="date"
-                    value={boardCustomStartDate}
-                    onChange={(e) => setBoardCustomStartDate(e.target.value)}
-                    className="h-8 w-[170px] text-xs"
-                  />
-                  <Input
-                    type="date"
-                    value={boardCustomEndDate}
-                    onChange={(e) => setBoardCustomEndDate(e.target.value)}
-                    className="h-8 w-[170px] text-xs"
-                  />
-                </div>
-              )}
 
               {boardLoading ? (
                 <p className="text-xs text-muted-foreground">Loading order board...</p>
@@ -1465,7 +1489,16 @@ export default function PosPage() {
         )}
       >
         <div className="border-b p-4 flex items-center justify-between">
-          <h2 className="text-base font-semibold">Order Details</h2>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setCartOpen(false)}
+              className="lg:hidden flex size-7 items-center justify-center rounded-lg border text-muted-foreground hover:bg-muted hover:text-foreground"
+              title="Tutup"
+            >
+              <X className="size-4" />
+            </button>
+            <h2 className="text-base font-semibold">Order Details</h2>
+          </div>
           <button
             onClick={resetOrderDetails}
             className="rounded p-1 text-muted-foreground hover:bg-red-50 hover:text-red-500"
@@ -2294,13 +2327,13 @@ export default function PosPage() {
                 Cancel
               </Button>
               <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700"
+                className="flex-1 bg-primary hover:bg-primary/90"
                 onClick={() => {
                   void createTable();
                 }}
                 disabled={!newTableName.trim() || !newTableCapacity || tableCreateSaving}
               >
-                {tableCreateSaving ? "Saving..." : "Add Table"}
+                {tableCreateSaving ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>

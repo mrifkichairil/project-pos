@@ -76,6 +76,14 @@ function calcMargin(hpp: number, price: number) {
   return ((price - hpp) / hpp) * 100;
 }
 
+function marginStatus(margin: number): { label: string; color: string; textColor: string; borderColor: string } {
+  if (margin >= 100) return { label: "Very Good", color: "bg-emerald-50", textColor: "text-emerald-600", borderColor: "border-emerald-200" };
+  if (margin >= 80) return { label: "Good", color: "bg-blue-50", textColor: "text-blue-600", borderColor: "border-blue-200" };
+  if (margin >= 50) return { label: "Normal", color: "bg-slate-50", textColor: "text-slate-600", borderColor: "border-slate-200" };
+  if (margin >= 30) return { label: "Low", color: "bg-amber-50", textColor: "text-amber-600", borderColor: "border-amber-200" };
+  return { label: "Critical", color: "bg-red-50", textColor: "text-red-600", borderColor: "border-red-200" };
+}
+
 export default function MenuRecipePage() {
   const [search, setSearch] = useState("");
   const [activeTab, setActiveTab] = useState<"recipe" | "pricing" | "addon">("recipe");
@@ -455,7 +463,7 @@ export default function MenuRecipePage() {
 
         {/* Search */}
         <div className="px-4 pt-4 pb-4 sm:px-6 animate-slide-up" style={{ animationDelay: '100ms' }}>
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
             <div className="relative w-full sm:w-72">
               <Search className="absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -628,8 +636,39 @@ export default function MenuRecipePage() {
                     <CardTitle className="text-sm font-semibold">Menu Pricing & Margin</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <div className="overflow-x-auto">
-                      <table className="w-full min-w-125 text-left text-xs">
+                    {/* Mobile card view */}
+                    <div className="space-y-3 md:hidden">
+                      {paginatedProducts.map((p) => {
+                        const margin = calcMargin(p.hpp, p.price);
+                        const profit = p.price - p.hpp;
+                        const status = marginStatus(margin);
+                        return (
+                          <div key={p.id} className="rounded-lg border p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-semibold">{p.name}</p>
+                                <p className="text-[11px] text-muted-foreground">{p.category}</p>
+                              </div>
+                              <Badge variant="outline" className={cn("text-[10px]", status.borderColor, status.color, status.textColor)}>
+                                {status.label}
+                              </Badge>
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                              <div><span className="text-muted-foreground">HPP:</span> <span className="font-medium">{formatRp(p.hpp)}</span></div>
+                              <div><span className="text-muted-foreground">Harga Jual:</span> <span className="font-semibold">{formatRp(p.price)}</span></div>
+                              <div>
+                                <span className="text-muted-foreground">Margin:</span>{" "}
+                                <span className={cn("font-semibold", status.textColor)}>{margin.toFixed(0)}%</span>
+                              </div>
+                              <div><span className="text-muted-foreground">Profit:</span> <span className="font-semibold text-emerald-600">{formatRp(profit)}</span></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {/* Desktop table view */}
+                    <div className="hidden md:block overflow-x-auto">
+                      <table className="w-full text-left text-xs">
                       <thead>
                         <tr className="border-b text-muted-foreground">
                           <th className="pb-2 font-medium">Menu</th>
@@ -645,7 +684,7 @@ export default function MenuRecipePage() {
                         {paginatedProducts.map((p, index) => {
                           const margin = calcMargin(p.hpp, p.price);
                           const profit = p.price - p.hpp;
-                          const isHealthy = margin >= 100;
+                          const status = marginStatus(margin);
                           return (
                             <tr key={p.id} className="hover:bg-muted/30 transition-all duration-200 animate-slide-up" style={{ animationDelay: `${50 + index * 30}ms` }}>
                               <td className="py-2.5 font-medium">{p.name}</td>
@@ -653,22 +692,16 @@ export default function MenuRecipePage() {
                               <td className="py-2.5">{formatRp(p.hpp)}</td>
                               <td className="py-2.5 font-semibold">{formatRp(p.price)}</td>
                               <td className="py-2.5">
-                                <span className={cn("flex items-center gap-1 font-semibold", isHealthy ? "text-emerald-600" : "text-amber-600")}>
+                                <span className={cn("flex items-center gap-1 font-semibold", status.textColor)}>
                                   <TrendingUp className="size-3" />
                                   {margin.toFixed(0)}%
                                 </span>
                               </td>
                               <td className="py-2.5 font-semibold text-emerald-600">{formatRp(profit)}</td>
                               <td className="py-2.5">
-                                {isHealthy ? (
-                                  <Badge variant="outline" className="border-emerald-200 bg-emerald-50 text-emerald-600 text-[10px]">
-                                    Healthy
-                                  </Badge>
-                                ) : (
-                                  <Badge variant="outline" className="border-amber-200 bg-amber-50 text-amber-600 text-[10px]">
-                                    Review
-                                  </Badge>
-                                )}
+                                <Badge variant="outline" className={cn("text-[10px]", status.borderColor, status.color, status.textColor)}>
+                                  {status.label}
+                                </Badge>
                               </td>
                             </tr>
                           );
@@ -853,7 +886,7 @@ export default function MenuRecipePage() {
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Category</Label>
                     <select
-                      className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                       value={newMenu.category}
                       onChange={(e) => setNewMenu({ ...newMenu, category: e.target.value })}
                     >
@@ -881,7 +914,7 @@ export default function MenuRecipePage() {
                     {newMenu.ingredients.map((ing, idx) => (
                       <div key={idx} className="grid grid-cols-[1fr_80px_80px_32px] gap-2">
                         <select
-                          className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                           value={ing.name}
                           onChange={(e) => updateIngredient(idx, "name", e.target.value)}
                         >
@@ -974,7 +1007,7 @@ export default function MenuRecipePage() {
                   <div className="space-y-1">
                     <Label className="text-xs font-medium">Category</Label>
                     <select
-                      className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                      className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                       value={editMenu.category}
                       onChange={(e) => setEditMenu({ ...editMenu, category: e.target.value })}
                     >
@@ -1002,7 +1035,7 @@ export default function MenuRecipePage() {
                     {editMenu.ingredients.map((ing, idx) => (
                       <div key={idx} className="grid grid-cols-[1fr_80px_80px_32px] gap-2">
                         <select
-                          className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                          className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                           value={ing.name}
                           onChange={(e) => updateEditIngredient(idx, "name", e.target.value)}
                         >

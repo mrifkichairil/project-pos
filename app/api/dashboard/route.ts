@@ -206,10 +206,12 @@ export async function GET(request: Request) {
       qty: Number(row.qty),
     }));
 
-    const leastSeller = leastResult.rows.map((row: { name: string; qty: number }) => ({
-      name: row.name,
-      qty: Number(row.qty),
-    }));
+    const leastSeller = totalTransactions > 0
+      ? leastResult.rows.map((row: { name: string; qty: number }) => ({
+          name: row.name,
+          qty: Number(row.qty),
+        }))
+      : [];
 
     // Comparison chart (historical)
     let comparisonChart: Array<{ label: string; val: number; trx: number }> = [];

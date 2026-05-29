@@ -219,8 +219,45 @@ export default function UserPage() {
             <CardTitle className="text-sm font-semibold">Daftar User</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-[500px] text-left text-xs md:min-w-0">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {loading ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">Loading...</p>
+              ) : filtered.length === 0 ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">Tidak ada user ditemukan</p>
+              ) : (
+                paginated.map((u) => (
+                  <div key={u.id} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{u.name}</p>
+                        <p className="text-[11px] text-muted-foreground">@{u.username}</p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        {roleBadge(u.role)}
+                        {currentRole === "admin" && (
+                          <button onClick={() => setAssignModal({ userId: u.id, userName: u.name, userTenants: u.tenants || [] })} className="rounded p-1 text-blue-400 hover:bg-blue-50 hover:text-blue-600" title="Assign Tenant">
+                            <Building2 className="size-3.5" />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(u.id)} className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600" title="Hapus user">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div><span className="text-muted-foreground">Email:</span> <span className="font-medium">{u.email}</span></div>
+                      <div><span className="text-muted-foreground">Phone:</span> <span className="font-medium">{u.phone}</span></div>
+                      <div><span className="text-muted-foreground">Tenant:</span> <span className="font-medium">{u.tenant}</span></div>
+                      <div><span className="text-muted-foreground">Dibuat:</span> <span className="font-medium">{u.createdAt}</span></div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="pb-2 font-medium">Nama</th>
@@ -327,7 +364,7 @@ export default function UserPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs">Role</Label>
-                  <select className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
+                  <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm" value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })}>
                     <option value="cashier">Cashier</option>
                     <option value="manager">Manager</option>
                     {currentRole === "admin" && <option value="admin">Admin</option>}
@@ -338,7 +375,7 @@ export default function UserPage() {
               {(currentRole === "admin" || tenants.length > 1) && (
               <div className="space-y-1">
                 <Label className="text-xs">Tenant</Label>
-                <select className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>
+                <select className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm" value={form.tenantId} onChange={(e) => setForm({ ...form, tenantId: e.target.value })}>
                   <option value="">Pilih tenant...</option>
                   {tenants.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
@@ -404,7 +441,7 @@ export default function UserPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Tambah Tenant</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={assignForm.tenantId}
                   onChange={(e) => setAssignForm({ ...assignForm, tenantId: e.target.value })}
                 >
@@ -419,7 +456,7 @@ export default function UserPage() {
               <div className="space-y-1">
                 <Label className="text-xs">Role di tenant ini</Label>
                 <select
-                  className="h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm"
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
                   value={assignForm.role}
                   onChange={(e) => setAssignForm({ ...assignForm, role: e.target.value })}
                 >

@@ -114,7 +114,34 @@ export default function TenantPage() {
             <CardTitle className="text-sm font-semibold">Daftar Tenant</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {loading ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">Loading...</p>
+              ) : filtered.length === 0 ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">Tidak ada tenant ditemukan</p>
+              ) : (
+                paginated.map((t) => (
+                  <div key={t.id} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-semibold">{t.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{t.slug}</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {statusBadge(t.status)}
+                        <button onClick={() => handleDelete(t.id)} className="rounded p-1 text-red-400 hover:bg-red-50 hover:text-red-600" title="Arsipkan tenant">
+                          <Trash2 className="size-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="text-xs"><span className="text-muted-foreground">Dibuat:</span> <span className="font-medium">{t.createdAt}</span></div>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
               <table className="w-full text-left text-xs">
                 <thead>
                   <tr className="border-b text-muted-foreground">

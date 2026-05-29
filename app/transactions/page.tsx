@@ -340,10 +340,10 @@ export default function TransactionsPage() {
               <span className="hidden sm:inline">Reset</span>
             </Button>
           </div>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:gap-4">
-            <div className="flex flex-col gap-2">
+          <div className="flex items-end gap-3">
+            <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
               <span className="text-xs font-medium text-muted-foreground">Date</span>
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex items-center gap-2">
                 <Select
                   value={dateFilter}
                   onValueChange={(value) => {
@@ -354,7 +354,7 @@ export default function TransactionsPage() {
                     setPage(1);
                   }}
                 >
-                  <SelectTrigger className="h-8 w-[140px] text-xs sm:w-[180px]">
+                  <SelectTrigger className="h-8 w-full sm:w-[150px] text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -405,7 +405,7 @@ export default function TransactionsPage() {
                 )}
               </div>
             </div>
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-1 flex-col gap-1 sm:flex-initial">
               <span className="text-xs font-medium text-muted-foreground">Payment Status</span>
               <Select
                 value={statusFilter}
@@ -414,7 +414,7 @@ export default function TransactionsPage() {
                   setPage(1);
                 }}
               >
-                <SelectTrigger className="h-8 w-[140px] text-xs sm:w-[180px]">
+                <SelectTrigger className="h-8 w-full sm:w-[150px] text-xs">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -434,8 +434,69 @@ export default function TransactionsPage() {
             <CardTitle className="text-sm font-semibold">Transaction List</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full min-w-175 text-center text-xs">
+            {/* Mobile card view */}
+            <div className="space-y-3 md:hidden">
+              {loading ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">Loading transactions...</p>
+              ) : error ? (
+                <p className="py-6 text-center text-xs text-red-600">{error}</p>
+              ) : paginated.length === 0 ? (
+                <p className="py-6 text-center text-xs text-muted-foreground">No transactions found.</p>
+              ) : (
+                paginated.map((t) => (
+                  <div key={t.id} className="rounded-lg border p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-primary">{t.id}</span>
+                      <div className="flex items-center gap-1">
+                        {paymentStatusBadge(t.paymentStatus)}
+                        {orderStatusBadge(t.orderStatus)}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">Rp {t.total.toLocaleString("id-ID")}</p>
+                      <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                        {methodIcon(t.method)}
+                        <span>{t.method}</span>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                      <div><span className="text-muted-foreground">Customer:</span> <span className="font-medium">{t.customer}</span></div>
+                      <div><span className="text-muted-foreground">Type:</span> <span className="font-medium">{t.type}</span></div>
+                      <div><span className="text-muted-foreground">Waktu:</span> <span className="font-medium">{t.date}, {t.time}</span></div>
+                      <div><span className="text-muted-foreground">Kasir:</span> <span className="font-medium">{t.handledBy || "-"}</span></div>
+                    </div>
+                    <div className="flex items-center gap-1 pt-1 border-t">
+                      {t.method === "QRIS" && t.paymentStatus === "Pending" && (
+                        <button
+                          onClick={() => confirmQrisPayment(t.id)}
+                          className="rounded p-1 text-emerald-500 hover:bg-emerald-50 hover:text-emerald-600"
+                          title="Konfirmasi pembayaran"
+                        >
+                          <CheckCircle className="size-3.5" />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setSelectedTx(t)}
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Lihat detail"
+                      >
+                        <Eye className="size-3.5" />
+                      </button>
+                      <button
+                        onClick={() => { setSelectedTx(t); setShowReceipt(true); }}
+                        className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+                        title="Cetak ulang struk"
+                      >
+                        <Printer className="size-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            {/* Desktop table view */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-center text-xs">
                 <thead>
                   <tr className="border-b text-muted-foreground">
                     <th className="pb-2 font-medium text-left">Transaction ID</th>
