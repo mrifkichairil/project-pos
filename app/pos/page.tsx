@@ -248,8 +248,7 @@ export default function PosPage() {
   const [pointPerRupiah, setPointPerRupiah] = useState(10000);
   const [pointValue, setPointValue] = useState(1);
   const [inventoryPolicy, setInventoryPolicy] = useState("medium");
-
-  const cashierName = "Jennie Doe";
+  const [cashierName, setCashierName] = useState("");
 
   const promoMap: Record<string, { label: string; calc: (sub: number) => number }> = {
     WELCOME10: { label: "WELCOME10", calc: (sub) => Math.round(sub * 0.1) },
@@ -538,6 +537,7 @@ export default function PosPage() {
       void loadBoardOrders();
       void loadTables();
       void loadTaxSettings();
+      fetch("/api/auth/me").then(r => r.ok ? r.json() : null).then(data => { if (data?.name) setCashierName(data.name); }).catch(() => {});
     });
   }, [loadMenuList, loadBoardOrders, loadTables, loadTaxSettings]);
 
@@ -933,16 +933,9 @@ export default function PosPage() {
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 items-center gap-3 border-b px-4 sm:gap-4 sm:px-6">
-          <h1 className="text-base font-semibold sm:text-lg">Welcome, {cashierName}</h1>
-          <div className="relative ml-auto hidden sm:flex w-40 items-center lg:w-64">
-            <Search className="absolute left-3 size-4 text-muted-foreground" />
-            <Input
-              placeholder="Search anything"
-              className="h-9 rounded-lg border-border bg-muted/50 pl-9 text-sm"
-            />
-          </div>
-          <div className="ml-auto flex items-center gap-1 text-xs text-muted-foreground sm:ml-0 sm:gap-1.5 sm:text-sm">
+        <header className="flex h-16 items-center gap-2 border-b px-4 sm:gap-4 sm:px-6">
+          <h1 className="min-w-0 shrink truncate text-sm font-semibold sm:text-lg">Welcome, {cashierName}</h1>
+          <div className="ml-auto flex shrink-0 items-center gap-1 text-xs text-muted-foreground sm:gap-1.5 sm:text-sm">
             <Calendar className="size-3.5 sm:size-4" />
             <span className="hidden sm:inline">
               {currentTime.toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
@@ -1122,7 +1115,7 @@ export default function PosPage() {
           {/* Menu Grid */}
           <div
             key={activeCategory}
-            className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4 2xl:grid-cols-5 animate-in fade-in-0 duration-[700ms]"
+            className="grid grid-cols-2 gap-3 min-[640px]:grid-cols-3 min-[1024px]:grid-cols-2 min-[1091px]:grid-cols-3 min-[1126px]:grid-cols-4 min-[1536px]:grid-cols-5 animate-in fade-in-0 duration-[700ms]"
           >
             {filteredMenu.map((item) => (
               <Card key={item.id} className={cn("flex flex-col gap-0 overflow-hidden rounded-xl py-0 shadow-none transition-all duration-500 hover:-translate-y-0.5", item.soldOut ? "opacity-50" : "", cart.some((c) => c.id === item.id) ? "border-teal-400 border-2" : "border border-border/40")}>

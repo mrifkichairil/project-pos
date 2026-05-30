@@ -40,6 +40,7 @@ export default function SettingsPage() {
 
   const [qrisImageUrl, setQrisImageUrl] = useState("");
   const [inventoryPolicy, setInventoryPolicy] = useState("medium");
+  const [pointEnabled, setPointEnabled] = useState(true);
   const [pointValue, setPointValue] = useState("1");
   const [pointPerRupiah, setPointPerRupiah] = useState("1000");
 
@@ -64,6 +65,7 @@ export default function SettingsPage() {
         setPpnRate(String(data.ppnRate));
         setQrisImageUrl(data.qrisImageUrl || "");
         setInventoryPolicy(data.inventoryPolicy || "medium");
+        setPointEnabled(data.pointEnabled ?? true);
         setPointValue(String(data.pointValue || 1));
         setPointPerRupiah(String(data.pointPerRupiah || 1000));
       } catch {
@@ -114,6 +116,7 @@ export default function SettingsPage() {
           ppnRate: Number(ppnRate) || 0,
           qrisImageUrl,
           inventoryPolicy,
+          pointEnabled,
           pointValue: Number(pointValue) || 1,
           pointPerRupiah: Number(pointPerRupiah) || 1000,
         }),
@@ -271,11 +274,15 @@ export default function SettingsPage() {
           {/* Point Conversion */}
           <Card className="border-border/60">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-sm font-semibold">
-                <Coins className="size-4" />
-                Konversi Point Member
+              <CardTitle className="flex items-center justify-between text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <Coins className="size-4" />
+                  Konversi Point Member
+                </div>
+                <Switch checked={pointEnabled} onCheckedChange={setPointEnabled} />
               </CardTitle>
             </CardHeader>
+            {pointEnabled && (
             <CardContent className="space-y-4">
               <p className="text-[10px] text-muted-foreground">
                 Atur berapa point yang didapat member per transaksi
@@ -307,6 +314,7 @@ export default function SettingsPage() {
                 Contoh: Transaksi Rp. 50.000 → member dapat {Math.floor(50000 / (Number(pointPerRupiah) || 1)) * (Number(pointValue) || 1)} point
               </p>
             </CardContent>
+            )}
           </Card>
 
           {/* Tax Settings */}

@@ -14,6 +14,7 @@ type SettingsRow = {
   ppn_rate: string;
   qris_image_url: string;
   inventory_policy: string;
+  point_enabled: boolean;
   point_value: string;
   point_per_rupiah: string;
 };
@@ -30,6 +31,7 @@ type UpdatePayload = {
   ppnRate?: number | string;
   qrisImageUrl?: string;
   inventoryPolicy?: string;
+  pointEnabled?: boolean;
   pointValue?: number | string;
   pointPerRupiah?: number | string;
 };
@@ -40,7 +42,7 @@ export async function GET() {
 
   try {
     const result = await db.query<SettingsRow>(
-      `SELECT store_name, address, wifi_password, pb1_enabled, pb1_rate, service_enabled, service_rate, ppn_enabled, ppn_rate, qris_image_url, inventory_policy, point_value, point_per_rupiah FROM settings WHERE tenant_id = $1`,
+      `SELECT store_name, address, wifi_password, pb1_enabled, pb1_rate, service_enabled, service_rate, ppn_enabled, ppn_rate, qris_image_url, inventory_policy, COALESCE(point_enabled, true) as point_enabled, point_value, point_per_rupiah FROM settings WHERE tenant_id = $1`,
       [tenant.context.tenantId]
     );
 
@@ -57,6 +59,7 @@ export async function GET() {
         ppnRate: 11,
         qrisImageUrl: "",
         inventoryPolicy: "medium",
+        pointEnabled: true,
         pointValue: 1,
         pointPerRupiah: 1000,
       });
@@ -75,6 +78,7 @@ export async function GET() {
       ppnRate: Number(row.ppn_rate),
       qrisImageUrl: row.qris_image_url,
       inventoryPolicy: row.inventory_policy,
+      pointEnabled: row.point_enabled,
       pointValue: Number(row.point_value),
       pointPerRupiah: Number(row.point_per_rupiah),
     });
@@ -101,6 +105,7 @@ export async function PUT(request: Request) {
     const ppnRate = Number(body.ppnRate) || 0;
     const qrisImageUrl = body.qrisImageUrl ?? "";
     const inventoryPolicy = ["strict", "medium", "off"].includes(body.inventoryPolicy || "") ? body.inventoryPolicy : "medium";
+    const pointEnabled = body.pointEnabled ?? true;
     const pointValue = Number(body.pointValue) || 1;
     const pointPerRupiah = Number(body.pointPerRupiah) || 1000;
 
@@ -119,9 +124,10 @@ export async function PUT(request: Request) {
           ppn_rate,
           qris_image_url,
           inventory_policy,
+          point_enabled,
           point_value,
           point_per_rupiah
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
         ON CONFLICT (tenant_id) DO UPDATE SET
           store_name = EXCLUDED.store_name,
           address = EXCLUDED.address,
@@ -134,11 +140,12 @@ export async function PUT(request: Request) {
           ppn_rate = EXCLUDED.ppn_rate,
           qris_image_url = EXCLUDED.qris_image_url,
           inventory_policy = EXCLUDED.inventory_policy,
+          point_enabled = EXCLUDED.point_enabled,
           point_value = EXCLUDED.point_value,
           point_per_rupiah = EXCLUDED.point_per_rupiah,
           updated_at = NOW()
       `,
-      [tenant.context.tenantId, storeName, address, wifiPassword, pb1Enabled, pb1Rate, serviceEnabled, serviceRate, ppnEnabled, ppnRate, qrisImageUrl, inventoryPolicy, pointValue, pointPerRupiah]
+      [tenant.context.tenantId, storeName, address, wifiPassword, pb1Enabled, pb1Rate, serviceEnabled, serviceRate, ppnEnabled, ppnRate, qrisImageUrl, inventoryPolicy, pointEnabled, pointValue, pointPerRupiah]
     );
 
     return NextResponse.json({ success: true });

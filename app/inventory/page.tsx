@@ -20,6 +20,7 @@ import {
   X,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import toast from "react-hot-toast";
 import {
   Select,
   SelectContent,
@@ -201,80 +202,107 @@ export default function InventoryPage() {
   const purchasePagination = paginateData(filteredPurchases, purchasePage, perPage);
   const movementPagination = paginateData(filteredMovements, movementPage, perPage);
 
-  const handleAddIngredient = () => {
+  const handleAddIngredient = async () => {
     if (!newIngredient.name || !newIngredient.unit || !newIngredient.price) return;
-    const id = Math.max(...ingredientsData.map(i => i.id), 0) + 1;
-    setIngredientsData([...ingredientsData, {
-      id,
-      name: newIngredient.name,
-      unit: newIngredient.unit,
-      price: parsePrice(newIngredient.price),
-      supplier: newIngredient.supplier,
-      stock: Number(newIngredient.stock) || 0,
-      minStock: Number(newIngredient.minStock) || 0,
-      in30d: 0,
-      out30d: 0,
-    }]);
-    closeAllModals();
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addIngredient",
+          name: newIngredient.name,
+          unit: newIngredient.unit,
+          price: parsePrice(newIngredient.price),
+          supplier: newIngredient.supplier,
+          stock: Number(newIngredient.stock) || 0,
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { toast.error(data.error || "Gagal menambah ingredient"); return; }
+      toast.success("Ingredient berhasil ditambahkan!");
+      closeAllModals();
+      void loadInventory();
+    } catch {
+      toast.error("Gagal menambah ingredient");
+    }
   };
 
-  const handleAddPurchase = () => {
+  const handleAddPurchase = async () => {
     if (!newPurchase.item || !newPurchase.qty || !newPurchase.price) return;
-    const id = `PO-2026-${String(purchasesData.length + 1).padStart(3, "0")}`;
-    const qty = Number(newPurchase.qty);
-    const price = parsePrice(newPurchase.price);
-    setPurchasesData([...purchasesData, {
-      id,
-      date: newPurchase.date || new Date().toLocaleDateString("id-ID"),
-      item: newPurchase.item,
-      qty,
-      unit: newPurchase.unit || "pcs",
-      price,
-      total: qty * price,
-      supplier: newPurchase.supplier || "-",
-    }]);
-    setPurchasePage(1);
-    closeAllModals();
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addPurchase",
+          item: newPurchase.item,
+          qty: Number(newPurchase.qty),
+          pricePerUnit: parsePrice(newPurchase.price),
+          supplier: newPurchase.supplier,
+          date: newPurchase.date || undefined,
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { toast.error(data.error || "Gagal menambah purchase"); return; }
+      toast.success("Purchase berhasil ditambahkan!");
+      setPurchasePage(1);
+      closeAllModals();
+      void loadInventory();
+    } catch {
+      toast.error("Gagal menambah purchase");
+    }
   };
 
-  const handleAddMovement = () => {
+  const handleAddMovement = async () => {
     if (!newMovement.item || !newMovement.qty) return;
-    const id = `MV-${String(movementsData.length + 1).padStart(3, "0")}`;
-    setMovementsData([...movementsData, {
-      id,
-      date: new Date().toLocaleDateString("id-ID"),
-      item: newMovement.item,
-      type: newMovement.type,
-      qty: Number(newMovement.qty),
-      unit: newMovement.unit || "pcs",
-      ref: newMovement.ref || "-",
-      user: newMovement.user || "Admin",
-    }]);
-    setMovementPage(1);
-    closeAllModals();
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "addMovement",
+          ingredientName: newMovement.item,
+          qty: Number(newMovement.qty),
+          type: newMovement.type,
+          unit: newMovement.unit || undefined,
+          ref: newMovement.ref || undefined,
+          user: newMovement.user || undefined,
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { toast.error(data.error || "Gagal menambah movement"); return; }
+      toast.success("Stock movement berhasil ditambahkan!");
+      setMovementPage(1);
+      closeAllModals();
+      void loadInventory();
+    } catch {
+      toast.error("Gagal menambah movement");
+    }
   };
 
-  const handleRestock = () => {
+  const handleRestock = async () => {
     if (!restock.ingredientId || !restock.qty) return;
-    const qty = Number(restock.qty);
-    const ing = ingredientsData.find(i => i.id === Number(restock.ingredientId));
-    if (!ing) return;
-    setIngredientsData(ingredientsData.map(i =>
-      i.id === Number(restock.ingredientId) ? { ...i, stock: i.stock + qty } : i
-    ));
-    const id = `MV-${String(movementsData.length + 1).padStart(3, "0")}`;
-    setMovementsData([...movementsData, {
-      id,
-      date: new Date().toLocaleDateString("id-ID"),
-      item: ing.name,
-      type: "in" as const,
-      qty,
-      unit: ing.unit,
-      ref: restock.ref || "Restock",
-      user: "Admin",
-    }]);
-    setMovementPage(1);
-    closeAllModals();
+    try {
+      const res = await fetch("/api/inventory", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "restock",
+          ingredientId: Number(restock.ingredientId),
+          qty: Number(restock.qty),
+          type: "in",
+          ref: restock.ref || "Restock",
+        }),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) { toast.error(data.error || "Gagal restock"); return; }
+      toast.success("Restock berhasil!");
+      setMovementPage(1);
+      closeAllModals();
+      void loadInventory();
+    } catch {
+      toast.error("Gagal restock");
+    }
   };
 
   return (
@@ -890,7 +918,19 @@ export default function InventoryPage() {
             <div className="space-y-3">
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Item Name</Label>
-                <Input placeholder="e.g. Kopi Arabica" value={newPurchase.item} onChange={(e) => setNewPurchase({ ...newPurchase, item: e.target.value })} />
+                <select
+                  className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
+                  value={newPurchase.item}
+                  onChange={(e) => {
+                    const selected = ingredientsData.find(i => i.name === e.target.value);
+                    setNewPurchase({ ...newPurchase, item: e.target.value, unit: selected?.unit || newPurchase.unit });
+                  }}
+                >
+                  <option value="">Pilih ingredient...</option>
+                  {ingredientsData.map((i) => (
+                    <option key={i.id} value={i.name}>{i.name}</option>
+                  ))}
+                </select>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -899,20 +939,12 @@ export default function InventoryPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Unit</Label>
-                  <select
-                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
-                    value={newPurchase.unit}
-                    onChange={(e) => setNewPurchase({ ...newPurchase, unit: e.target.value })}
-                  >
-                    <option value="">Select...</option>
-                    <option value="gram">gram</option>
-                    <option value="ml">ml</option>
-                    <option value="pcs">pcs</option>
-                    <option value="kg">kg</option>
-                    <option value="liter">liter</option>
-                    <option value="pack">pack</option>
-                    <option value="box">box</option>
-                  </select>
+                  <Input
+                    value={newPurchase.unit || "-"}
+                    disabled
+                    className="h-8 w-full rounded-lg text-base md:text-sm bg-muted/50 cursor-not-allowed"
+                  />
+                  <p className="text-[10px] text-muted-foreground">Otomatis dari ingredient</p>
                 </div>
               </div>
               <div className="space-y-1">
@@ -1000,20 +1032,11 @@ export default function InventoryPage() {
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-medium">Unit</Label>
-                  <select
-                    className="h-8 w-full rounded-lg border border-input bg-transparent px-2.5 py-1 text-base md:text-sm"
-                    value={newMovement.unit}
-                    onChange={(e) => setNewMovement({ ...newMovement, unit: e.target.value })}
-                  >
-                    <option value="">Select...</option>
-                    <option value="gram">gram</option>
-                    <option value="ml">ml</option>
-                    <option value="pcs">pcs</option>
-                    <option value="kg">kg</option>
-                    <option value="liter">liter</option>
-                    <option value="pack">pack</option>
-                    <option value="box">box</option>
-                  </select>
+                  <Input
+                    value={newMovement.unit || "-"}
+                    disabled
+                    className="h-8 w-full rounded-lg text-base md:text-sm bg-muted/50 cursor-not-allowed"
+                  />
                 </div>
               </div>
               <div className="space-y-1">
