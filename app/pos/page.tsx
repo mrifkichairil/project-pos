@@ -2347,7 +2347,7 @@ export default function PosPage() {
             <h3 className="mb-4 text-lg font-semibold">Receipt Preview</h3>
             <div className="mx-auto mb-4 max-w-[230px] rounded border border-dashed border-muted-foreground/30 bg-white p-4 font-mono text-[11px] leading-relaxed text-black dark:bg-white dark:text-black">
               <div className="text-center">
-                <p className="font-bold">WARUNG KITA</p>
+                <p className="font-bold">BingGo</p>
                 <p>Jl. Kemang Raya No. 12</p>
                 <p>Jakarta Selatan</p>
                 <p>--------------------------</p>

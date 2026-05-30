@@ -1,6 +1,6 @@
-# Warung Kita POS
+# BingGo
 
-Warung Kita POS adalah aplikasi point-of-sale berbasis web untuk operasional warung/restoran. Aplikasi ini mencakup kasir, dashboard, menu, inventori, transaksi, member/loyalty, pengaturan toko, pengguna, dan fondasi multi-tenant.
+BingGo adalah aplikasi point-of-sale berbasis web untuk operasional warung/restoran. Aplikasi ini mencakup kasir, dashboard, menu, inventori, transaksi, member/loyalty, pengaturan toko, pengguna, dan fondasi multi-tenant.
 
 ## Stack
 

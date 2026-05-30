@@ -2,7 +2,7 @@ BEGIN;
 
 CREATE TABLE IF NOT EXISTS settings (
   id SMALLINT PRIMARY KEY DEFAULT 1 CHECK (id = 1),
-  store_name VARCHAR(150) NOT NULL DEFAULT 'Warung Kita',
+  store_name VARCHAR(150) NOT NULL DEFAULT 'BingGo',
   address TEXT NOT NULL DEFAULT '',
   wifi_password VARCHAR(255) NOT NULL DEFAULT '',
   tax_enabled BOOLEAN NOT NULL DEFAULT FALSE,
@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS settings (
 );
 
 INSERT INTO settings (id, store_name, address, wifi_password, tax_enabled, tax_rate)
-VALUES (1, 'Warung Kita', '', '', FALSE, 10)
+VALUES (1, 'BingGo', '', '', FALSE, 10)
 ON CONFLICT (id) DO NOTHING;
 
 COMMIT;

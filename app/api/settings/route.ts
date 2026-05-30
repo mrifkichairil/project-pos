@@ -46,7 +46,7 @@ export async function GET() {
 
     if (result.rows.length === 0) {
       return NextResponse.json({
-        storeName: "Warung Kita",
+        storeName: "BingGo",
         address: "",
         wifiPassword: "",
         pb1Enabled: true,
@@ -90,7 +90,7 @@ export async function PUT(request: Request) {
   try {
     const body = (await request.json()) as UpdatePayload;
 
-    const storeName = body.storeName?.trim() ?? "Warung Kita";
+    const storeName = body.storeName?.trim() ?? "BingGo";
     const address = body.address?.trim() ?? "";
     const wifiPassword = body.wifiPassword ?? "";
     const pb1Enabled = body.pb1Enabled ?? true;

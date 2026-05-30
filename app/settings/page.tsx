@@ -27,7 +27,7 @@ type SettingsData = {
 };
 
 export default function SettingsPage() {
-  const [storeName, setStoreName] = useState("Warung Kita");
+  const [storeName, setStoreName] = useState("BingGo");
   const [address, setAddress] = useState("");
   const [wifiPassword, setWifiPassword] = useState("");
 

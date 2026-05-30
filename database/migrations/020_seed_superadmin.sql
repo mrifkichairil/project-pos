@@ -2,7 +2,7 @@ BEGIN;
 
 -- Create default tenant
 INSERT INTO tenants (slug, name, status)
-VALUES ('default', 'Warung Kita', 'active')
+VALUES ('default', 'BingGo', 'active')
 ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name, status = EXCLUDED.status, updated_at = NOW();
 
 -- Create super admin user
