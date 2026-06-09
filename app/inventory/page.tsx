@@ -898,7 +898,7 @@ export default function InventoryPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Supplier</Label>
-                <Select value={newIngredient.supplier} onValueChange={(val) => setNewIngredient({ ...newIngredient, supplier: val })}>
+                <Select value={newIngredient.supplier} onValueChange={(val) => setNewIngredient({ ...newIngredient, supplier: val ?? "" })}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Select supplier..." />
                   </SelectTrigger>
