@@ -47,8 +47,15 @@ export async function GET() {
     );
 
     if (result.rows.length === 0) {
+      // Fallback: use tenant name as store name
+      const tenantResult = await db.query<{ name: string }>(
+        `SELECT name FROM tenants WHERE id = $1`,
+        [tenant.context.tenantId]
+      );
+      const tenantName = tenantResult.rows[0]?.name || "";
+
       return NextResponse.json({
-        storeName: "BingGo",
+        storeName: tenantName,
         address: "",
         wifiPassword: "",
         pb1Enabled: true,

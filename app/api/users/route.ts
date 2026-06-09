@@ -66,9 +66,9 @@ export async function GET() {
          ORDER BY u.id`
       );
     } else {
-      // Non-admin can only see users in their tenant
+      // Non-admin can only see users in their tenant (via active_tenant_id OR user_tenants)
       result = await db.query<UserRow>(
-        `SELECT u.id, u.fullname, u.username, u.email, u.phone, u.role, u.is_active,
+        `SELECT DISTINCT u.id, u.fullname, u.username, u.email, u.phone, u.role, u.is_active,
                 u.created_at::text,
                 t.name AS tenant_name,
                 COALESCE(
@@ -86,6 +86,7 @@ export async function GET() {
                 ) AS subscription_end
          FROM users u
          LEFT JOIN tenants t ON t.id = u.active_tenant_id
+         LEFT JOIN user_tenants ut ON ut.user_id = u.id
          LEFT JOIN LATERAL (
            SELECT um.subscription_status, um.subscription_start, um.subscription_end
            FROM user_tenants utm
@@ -93,7 +94,7 @@ export async function GET() {
            WHERE utm.tenant_id = u.active_tenant_id
            LIMIT 1
          ) m ON u.role = 'cashier'
-         WHERE u.is_active = TRUE AND u.active_tenant_id = $1
+         WHERE u.is_active = TRUE AND (u.active_tenant_id = $1 OR ut.tenant_id = $1)
          ORDER BY u.id`,
         [session.tenantId]
       );
