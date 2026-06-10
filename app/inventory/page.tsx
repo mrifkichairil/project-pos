@@ -943,7 +943,7 @@ export default function InventoryPage() {
                   const selected = ingredientsData.find(i => i.name === val);
                   setNewPurchase({
                     ...newPurchase,
-                    item: val,
+                    item: val || "",
                     unit: selected?.unit || newPurchase.unit,
                     price: selected ? selected.price.toLocaleString("id-ID") : newPurchase.price,
                   });
@@ -979,7 +979,7 @@ export default function InventoryPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-medium">Supplier</Label>
-                <Select value={newPurchase.supplier} onValueChange={(val) => setNewPurchase({ ...newPurchase, supplier: val })}>
+                <Select value={newPurchase.supplier} onValueChange={(val) => setNewPurchase({ ...newPurchase, supplier: val || "" })}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Select supplier..." />
                   </SelectTrigger>
@@ -1022,7 +1022,7 @@ export default function InventoryPage() {
                 <Label className="text-xs font-medium">Item Name</Label>
                 <Select value={newMovement.item} onValueChange={(val) => {
                   const ing = ingredientsData.find(i => i.name === val);
-                  setNewMovement({ ...newMovement, item: val, unit: ing?.unit || newMovement.unit });
+                  setNewMovement({ ...newMovement, item: val || "", unit: ing?.unit || newMovement.unit });
                 }}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Select ingredient..." />
@@ -1071,7 +1071,7 @@ export default function InventoryPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-medium">User</Label>
-                <Select value={newMovement.user} onValueChange={(val) => setNewMovement({ ...newMovement, user: val })}>
+                <Select value={newMovement.user} onValueChange={(val) => setNewMovement({ ...newMovement, user: val || "" })}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Select user..." />
                   </SelectTrigger>
