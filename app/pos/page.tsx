@@ -38,6 +38,7 @@ import {
   Info,
   X,
   CalendarDays,
+  ChevronRight,
 } from "lucide-react";
 
 interface CartItem {
@@ -150,6 +151,18 @@ function serializeTableStatus(status: TableStatus): "available" | "occupied" | "
   return "available";
 }
 
+const kanbanStatusFlow: KanbanStatus[] = ["Queue", "Process", "Ready", "Served", "Done"];
+
+function getNextKanbanStatus(current: KanbanStatus): KanbanStatus | null {
+  const idx = kanbanStatusFlow.indexOf(current);
+  return idx < kanbanStatusFlow.length - 1 ? kanbanStatusFlow[idx + 1] : null;
+}
+
+function getPrevKanbanStatus(current: KanbanStatus): KanbanStatus | null {
+  const idx = kanbanStatusFlow.indexOf(current);
+  return idx > 0 ? kanbanStatusFlow[idx - 1] : null;
+}
+
 const fallbackMenuImage = "https://images.unsplash.com/photo-1512058564366-18510be2db19?w=400&q=80";
 
 const memberList = [
@@ -229,6 +242,7 @@ export default function PosPage() {
   const [boardCustomStartDate, setBoardCustomStartDate] = useState("");
   const [boardCustomEndDate, setBoardCustomEndDate] = useState("");
   const [boardDateRange, setBoardDateRange] = useState<DateRange | undefined>(undefined);
+  const [mobileKanbanTab, setMobileKanbanTab] = useState<KanbanStatus>("Queue");
 
   const [tables, setTables] = useState<PosTable[]>([]);
   const [tablesLoading, setTablesLoading] = useState(true);
@@ -1281,7 +1295,152 @@ export default function PosPage() {
               ) : boardError ? (
                 <p className="text-xs text-red-600">{boardError}</p>
               ) : (
-                <div className="flex gap-4 overflow-x-auto pb-2">
+                <>
+                  {/* Mobile: tabbed kanban with action buttons */}
+                  <div className="flex flex-col gap-3 md:hidden">
+                    {/* Status tabs - horizontal scrollable */}
+                    <div className="flex gap-1.5 overflow-x-auto pb-1 -mx-1 px-1">
+                      {[
+                        { key: "Queue" as KanbanStatus, label: "Queue", color: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
+                        { key: "Process" as KanbanStatus, label: "Process", color: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
+                        { key: "Ready" as KanbanStatus, label: "Ready", color: "bg-green-50 text-green-700 border-green-200", dot: "bg-green-500" },
+                        { key: "Served" as KanbanStatus, label: "Served", color: "bg-purple-50 text-purple-700 border-purple-200", dot: "bg-purple-500" },
+                        { key: "Done" as KanbanStatus, label: "Done", color: "bg-emerald-50 text-emerald-700 border-emerald-200", dot: "bg-emerald-500" },
+                      ].map((tab) => {
+                        const count = boardOrders.filter((o) => o.status === tab.key).length;
+                        return (
+                          <button
+                            key={tab.key}
+                            onClick={() => setMobileKanbanTab(tab.key)}
+                            className={cn(
+                              "flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition-all",
+                              mobileKanbanTab === tab.key
+                                ? cn(tab.color, "shadow-sm")
+                                : "border-border bg-background text-muted-foreground hover:bg-muted"
+                            )}
+                          >
+                            <span className={cn("size-1.5 rounded-full", tab.dot)} />
+                            {tab.label}
+                            <span className="ml-0.5 text-[10px] opacity-70">({count})</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Order cards for active tab */}
+                    <div className="flex flex-col gap-2">
+                      {boardOrders.filter((o) => o.status === mobileKanbanTab).length === 0 ? (
+                        <p className="py-6 text-center text-xs text-muted-foreground">Tidak ada order di status ini</p>
+                      ) : (
+                        boardOrders.filter((o) => o.status === mobileKanbanTab).map((order) => {
+                          const nextStatus = getNextKanbanStatus(order.status);
+                          const prevStatus = getPrevKanbanStatus(order.status);
+                          return (
+                            <Card key={order.id} className={cn("border-border/60 shadow-sm", boardStatusSaving === order.id && "opacity-70")}>
+                              <CardContent className="p-3">
+                                <div className="mb-2 flex items-center justify-between" onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
+                                  <span className="text-xs text-muted-foreground">#{order.orderCode}</span>
+                                  <span className="text-xs text-muted-foreground">{order.time}</span>
+                                </div>
+                                <div onClick={() => setExpandedOrder(expandedOrder === order.id ? null : order.id)}>
+                                  <p className="text-sm font-medium">{order.name}</p>
+                                  <p className="text-xs text-muted-foreground">{order.type}</p>
+                                  {(order.type || "").toLowerCase().replace(/\s+/g, "") === "dinein" && order.tableName && (
+                                    <p className="text-xs text-muted-foreground">Table: {order.tableName}</p>
+                                  )}
+                                  <p className="text-xs text-muted-foreground">Handled by: {order.handledBy || "-"}</p>
+                                  <div className="mt-1 flex items-center justify-between">
+                                    <span className="text-xs text-muted-foreground">{order.items} items</span>
+                                    <span className="text-xs font-semibold">Rp. {order.total.toLocaleString("id-ID")}</span>
+                                  </div>
+                                </div>
+
+                                {/* Expanded items */}
+                                <div
+                                  className={cn(
+                                    "grid transition-all duration-300 ease-out",
+                                    expandedOrder === order.id ? "grid-rows-[1fr] opacity-100 mt-2" : "grid-rows-[0fr] opacity-0"
+                                  )}
+                                >
+                                  <div className="overflow-hidden">
+                                    <hr className="mb-2 border-border/60" />
+                                    <p className="mb-2 text-xs font-semibold">Ordered Items:</p>
+                                    <div className="space-y-2">
+                                      {order.menuItems?.map((m, idx) => (
+                                        <div key={idx} className={cn("flex items-start justify-between text-xs", m.refunded && "opacity-50")}>
+                                          <div className="flex flex-col gap-0.5">
+                                            <span className={cn("font-medium", m.refunded && "line-through")}>{m.name} <span className="text-muted-foreground">x{m.qty}</span></span>
+                                            {m.variant && (
+                                              <span className="text-muted-foreground">({m.variant}{m.sugar ? `, ${m.sugar}` : ""})</span>
+                                            )}
+                                            {m.note && (
+                                              <span className="max-w-56 wrap-break-word text-[10px] italic leading-tight text-muted-foreground">Note: {m.note}</span>
+                                            )}
+                                            {m.refunded && (
+                                              <Badge variant="outline" className="w-fit border-red-200 bg-red-50 text-red-600 text-[9px] px-1 py-0">Refunded</Badge>
+                                            )}
+                                          </div>
+                                          <div className="flex items-center gap-1.5 shrink-0 pl-2">
+                                            <span className={cn(m.refunded && "line-through")}>Rp. {(m.price * m.qty).toLocaleString("id-ID")}</span>
+                                            {!m.refunded && order.status === "Done" && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); void refundItem(order.orderCode, m.name, idx); }}
+                                                className="rounded p-0.5 text-red-400 hover:bg-red-50 hover:text-red-600"
+                                                title="Refund item ini"
+                                              >
+                                                <RotateCcw className="size-3" />
+                                              </button>
+                                            )}
+                                            {m.refunded && order.status === "Done" && (
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); void unrefundItem(order.orderCode, m.name, idx); }}
+                                                className="rounded p-0.5 text-emerald-400 hover:bg-emerald-50 hover:text-emerald-600"
+                                                title="Batalkan refund"
+                                              >
+                                                <RotateCcw className="size-3 scale-x-[-1]" />
+                                              </button>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Mobile action buttons */}
+                                <div className="mt-3 flex items-center gap-2 border-t border-border/40 pt-2.5">
+                                  {prevStatus && (
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 flex-1 text-[11px]"
+                                      disabled={boardStatusSaving === order.id}
+                                      onClick={() => void updateBoardOrderStatus(order.id, prevStatus)}
+                                    >
+                                      ← {prevStatus}
+                                    </Button>
+                                  )}
+                                  {nextStatus && (
+                                    <Button
+                                      size="sm"
+                                      className="h-7 flex-1 gap-1 text-[11px]"
+                                      disabled={boardStatusSaving === order.id}
+                                      onClick={() => void updateBoardOrderStatus(order.id, nextStatus)}
+                                    >
+                                      {nextStatus} <ChevronRight className="size-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </CardContent>
+                            </Card>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Desktop: horizontal kanban columns with drag-and-drop */}
+                  <div className="hidden md:flex gap-4 overflow-x-auto pb-2">
                   {[
                     { key: "Queue", label: "Queue", color: "bg-amber-50 text-amber-700 border-amber-200", dot: "bg-amber-500" },
                     { key: "Process", label: "Process", color: "bg-blue-50 text-blue-700 border-blue-200", dot: "bg-blue-500" },
@@ -1404,6 +1563,7 @@ export default function PosPage() {
                     );
                   })}
                 </div>
+                </>
               )}
             </div>
           ) : (

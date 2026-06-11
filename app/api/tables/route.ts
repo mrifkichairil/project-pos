@@ -41,6 +41,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   const body = (await request.json()) as CreateTablePayload;
 
   const name = body.name?.trim();
@@ -54,11 +57,11 @@ export async function POST(request: Request) {
   try {
     const result = await db.query<TableRow>(
       `
-        INSERT INTO dining_tables (name, capacity, status)
-        VALUES ($1, $2, $3)
+        INSERT INTO dining_tables (name, capacity, status, tenant_id)
+        VALUES ($1, $2, $3, $4)
         RETURNING id, name, capacity, status
       `,
-      [name, Math.trunc(capacity), status]
+      [name, Math.trunc(capacity), status, tenant.context.tenantId]
     );
 
     return NextResponse.json({ table: result.rows[0] }, { status: 201 });

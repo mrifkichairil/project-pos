@@ -527,7 +527,7 @@ export default function MenuRecipePage() {
             <>
               {/* ─── Recipe / BOM ─── */}
               <div className="px-4 py-4 sm:px-6">
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                   {filteredRecipes.map((recipe, index) => {
                     const hpp = calcHPP(recipe.ingredients, ingredientPrices);
                     return (
@@ -597,7 +597,42 @@ export default function MenuRecipePage() {
                     {/* BOM Table */}
                     <div className="flex-1 overflow-y-auto px-6 py-4">
                       <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Bill of Materials</h3>
-                      <div className="overflow-x-auto rounded-lg border border-border/60">
+
+                      {/* Mobile card view */}
+                      <div className="space-y-2 md:hidden">
+                        {(() => {
+                          const hpp = calcHPP(selectedRecipe.ingredients, ingredientPrices);
+                          return selectedRecipe.ingredients.map((ing) => {
+                            const ip = ingredientPrices[ing.name];
+                            const subtotal = (ip?.price ?? 0) * ing.qty;
+                            const costPct = hpp > 0 ? (subtotal / hpp) * 100 : 0;
+                            return (
+                              <div key={ing.name} className="rounded-lg border border-border/60 p-3 space-y-1.5">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-sm font-semibold">{ing.name}</p>
+                                  <span className="text-xs font-bold">{formatRp(subtotal)}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                  <span>Supplier: {ip?.supplier ?? "-"}</span>
+                                  <span>Qty: {ing.qty} {ing.unit}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                                  <span>Price: {ip ? formatRp(ip.price) + "/" + ip.unit : "-"}</span>
+                                  <span>Cost: {costPct.toFixed(1)}%</span>
+                                  <span>Stock: {ip?.stock?.toLocaleString("id-ID") ?? "-"}</span>
+                                </div>
+                              </div>
+                            );
+                          });
+                        })()}
+                        <div className="rounded-lg border-2 border-border/60 bg-muted/50 p-3 text-center">
+                          <span className="text-xs font-semibold text-muted-foreground">Total HPP: </span>
+                          <span className="text-sm font-bold">{formatRp(calcHPP(selectedRecipe.ingredients, ingredientPrices))}</span>
+                        </div>
+                      </div>
+
+                      {/* Desktop table view */}
+                      <div className="hidden md:block overflow-x-auto rounded-lg border border-border/60">
                         <table className="w-full text-left text-xs">
                           <thead>
                             <tr className="border-b border-border/60 bg-muted/50 text-muted-foreground">

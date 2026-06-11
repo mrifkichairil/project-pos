@@ -32,6 +32,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
   try {
     const body = (await request.json()) as { name?: string; price?: number | string };
     const name = body.name?.trim();
@@ -42,8 +45,8 @@ export async function POST(request: Request) {
     }
 
     const result = await db.query<{ id: number }>(
-      `INSERT INTO addons (name, price) VALUES ($1, $2) RETURNING id`,
-      [name, price]
+      `INSERT INTO addons (name, price, tenant_id) VALUES ($1, $2, $3) RETURNING id`,
+      [name, price, tenant.context.tenantId]
     );
 
     return NextResponse.json({ success: true, addon: { id: result.rows[0].id, name, price } }, { status: 201 });

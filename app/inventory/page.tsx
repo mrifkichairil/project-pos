@@ -110,10 +110,12 @@ export default function InventoryPage() {
   const [showAddIngredient, setShowAddIngredient] = useState(false);
   const [showAddPurchase, setShowAddPurchase] = useState(false);
   const [showAddMovement, setShowAddMovement] = useState(false);
+  const [purchaseSaving, setPurchaseSaving] = useState(false);
 
   const [newIngredient, setNewIngredient] = useState({ name: "", unit: "", price: "", supplier: "", stock: "", minStock: "" });
   const [newPurchase, setNewPurchase] = useState({ item: "", qty: "", unit: "", price: "", supplier: "", date: "" });
   const [newMovement, setNewMovement] = useState({ item: "", type: "in" as "in" | "out", qty: "", unit: "", ref: "", user: "" });
+  const [loggedInUser, setLoggedInUser] = useState("");
 
   const [stockPage, setStockPage] = useState(1);
   const [purchasePage, setPurchasePage] = useState(1);
@@ -172,6 +174,9 @@ export default function InventoryPage() {
   useEffect(() => {
     queueMicrotask(() => {
       void loadInventory();
+      fetch("/api/auth/me").then(r => r.ok ? r.json() : null).then((data: { name?: string } | null) => {
+        if (data?.name) setLoggedInUser(data.name);
+      }).catch(() => {});
     });
   }, [loadInventory]);
 
@@ -233,6 +238,7 @@ export default function InventoryPage() {
 
   const handleAddPurchase = async () => {
     if (!newPurchase.item || !newPurchase.qty || !newPurchase.price) return;
+    setPurchaseSaving(true);
     try {
       const res = await fetch("/api/inventory", {
         method: "POST",
@@ -254,6 +260,8 @@ export default function InventoryPage() {
       void loadInventory();
     } catch {
       toast.error("Gagal menambah purchase");
+    } finally {
+      setPurchaseSaving(false);
     }
   };
 
@@ -322,7 +330,7 @@ export default function InventoryPage() {
             onClick={() => {
               if (activeTab === "stock") setShowAddIngredient(true);
               else if (activeTab === "purchase") setShowAddPurchase(true);
-              else if (activeTab === "movement") setShowAddMovement(true);
+              else if (activeTab === "movement") { setNewMovement(prev => ({ ...prev, user: loggedInUser })); setShowAddMovement(true); }
             }}
           >
             <Plus className="size-3.5 sm:size-4" />
@@ -1002,8 +1010,10 @@ export default function InventoryPage() {
               </div>
             </div>
             <div className="mt-4 flex gap-2">
-              <Button variant="outline" className="flex-1" onClick={closeAllModals}>Cancel</Button>
-              <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleAddPurchase}>Save</Button>
+              <Button variant="outline" className="flex-1" onClick={closeAllModals} disabled={purchaseSaving}>Cancel</Button>
+              <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleAddPurchase} disabled={purchaseSaving}>
+                {purchaseSaving ? "Saving..." : "Save"}
+              </Button>
             </div>
           </div>
         </div>

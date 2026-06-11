@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Plus, Search, Star, UtensilsCrossed, Clock, ShoppingCart, Gift, RefreshCw } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import toast from "react-hot-toast";
 
 type MemberTier = "Bronze" | "Silver" | "Gold" | "Platinum";
 
@@ -70,6 +72,9 @@ export default function MemberPage() {
   const [selectedMember, setSelectedMember] = useState<MemberData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [errorMessage, setErrorMessage] = useState("");
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMember, setNewMember] = useState({ name: "", email: "", phone: "", location: "" });
+  const [memberSaving, setMemberSaving] = useState(false);
 
   const loadMembers = useCallback(async () => {
     try {
@@ -98,6 +103,34 @@ export default function MemberPage() {
     });
   }, [loadMembers]);
 
+  const handleAddMember = async () => {
+    if (!newMember.name.trim() || !newMember.email.trim() || !newMember.phone.trim() || !newMember.location.trim()) {
+      toast.error("Semua field wajib diisi");
+      return;
+    }
+    setMemberSaving(true);
+    try {
+      const res = await fetch("/api/member", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newMember),
+      });
+      const data = await res.json() as { error?: string };
+      if (!res.ok) {
+        toast.error(data.error || "Gagal menambah member");
+        return;
+      }
+      toast.success("Member berhasil ditambahkan!");
+      setShowAddMember(false);
+      setNewMember({ name: "", email: "", phone: "", location: "" });
+      void loadMembers();
+    } catch {
+      toast.error("Gagal menambah member");
+    } finally {
+      setMemberSaving(false);
+    }
+  };
+
   const filtered = membersData.filter(
     (m) =>
       m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -119,7 +152,10 @@ export default function MemberPage() {
             <RefreshCw className="size-3.5" />
             <span className="hidden sm:inline">Refresh</span>
           </Button>
-          <Button className="h-8 gap-2 rounded-xl bg-primary px-3 text-xs font-medium hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm">
+          <Button
+            className="h-8 gap-2 rounded-xl bg-primary px-3 text-xs font-medium hover:bg-primary/90 sm:h-9 sm:px-4 sm:text-sm"
+            onClick={() => setShowAddMember(true)}
+          >
             <Plus className="size-3.5 sm:size-4" />
             <span className="hidden sm:inline">Add Member</span>
             <span className="sm:hidden">Add</span>
@@ -349,6 +385,63 @@ export default function MemberPage() {
           </div>
         )}
       </div>
+
+      {/* Add Member Modal */}
+      {showAddMember && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-xl bg-background p-6 shadow-lg">
+            <h2 className="mb-4 text-base font-semibold">Add New Member</h2>
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Name</Label>
+                <Input
+                  placeholder="Nama lengkap"
+                  value={newMember.name}
+                  onChange={(e) => setNewMember({ ...newMember, name: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Email</Label>
+                <Input
+                  type="email"
+                  placeholder="email@contoh.com"
+                  value={newMember.email}
+                  onChange={(e) => setNewMember({ ...newMember, email: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Phone</Label>
+                <Input
+                  type="tel"
+                  placeholder="0812-xxxx-xxxx"
+                  value={newMember.phone}
+                  onChange={(e) => setNewMember({ ...newMember, phone: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-medium">Location</Label>
+                <Input
+                  placeholder="Kota / Daerah"
+                  value={newMember.location}
+                  onChange={(e) => setNewMember({ ...newMember, location: e.target.value })}
+                  className="h-8 text-xs"
+                />
+              </div>
+            </div>
+            <div className="mt-4 flex gap-2">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowAddMember(false); setNewMember({ name: "", email: "", phone: "", location: "" }); }} disabled={memberSaving}>
+                Cancel
+              </Button>
+              <Button className="flex-1 bg-primary hover:bg-primary/90" onClick={handleAddMember} disabled={memberSaving}>
+                {memberSaving ? "Saving..." : "Save"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -244,7 +244,9 @@ export async function POST(request: Request) {
       const countResult = await db.query<{ count: string }>(
         `SELECT COUNT(*)::text as count FROM stock_movements WHERE tenant_id = $1`, [tenantId]
       );
-      const movementCode = `MV-${String(Number(countResult.rows[0].count) + 1).padStart(3, "0")}`;
+      const today = new Date();
+      const dateStr = `${today.getFullYear()}${String(today.getMonth() + 1).padStart(2, "0")}${String(today.getDate()).padStart(2, "0")}`;
+      const movementCode = `MV-${dateStr}-${String(Number(countResult.rows[0].count) + 1).padStart(3, "0")}`;
 
       // Insert movement
       await db.query(
@@ -284,30 +286,33 @@ export async function POST(request: Request) {
       let supplierId: number;
       const supplierName = supplier?.trim() || "Unknown";
       const suppResult = await db.query<{ id: number }>(
-        `SELECT id FROM suppliers WHERE name = $1 AND tenant_id = $2 LIMIT 1`,
-        [supplierName, tenantId]
+        `SELECT id FROM suppliers WHERE name = $1 LIMIT 1`,
+        [supplierName]
       );
       if (suppResult.rows.length > 0) {
         supplierId = suppResult.rows[0].id;
       } else {
         const newSupp = await db.query<{ id: number }>(
-          `INSERT INTO suppliers (name, tenant_id) VALUES ($1, $2) RETURNING id`,
-          [supplierName, tenantId]
+          `INSERT INTO suppliers (name) VALUES ($1) RETURNING id`,
+          [supplierName]
         );
         supplierId = newSupp.rows[0].id;
       }
 
       // Generate PO code
       const poCountResult = await db.query<{ count: string }>(
-        `SELECT COUNT(*)::text as count FROM purchase_orders WHERE tenant_id = $1`, [tenantId]
+        `SELECT COUNT(*)::text as count FROM purchase_orders po
+         JOIN purchase_order_items poi ON poi.purchase_order_id = po.id
+         JOIN ingredients ing ON ing.id = poi.ingredient_id
+         WHERE ing.tenant_id = $1`, [tenantId]
       );
       const poCode = `PO-2026-${String(Number(poCountResult.rows[0].count) + 1).padStart(3, "0")}`;
 
       // Create purchase order
       const poResult = await db.query<{ id: number }>(
-        `INSERT INTO purchase_orders (po_code, supplier_id, order_date, tenant_id)
-         VALUES ($1, $2, $3::date, $4) RETURNING id`,
-        [poCode, supplierId, date || new Date().toISOString().split("T")[0], tenantId]
+        `INSERT INTO purchase_orders (po_code, supplier_id, order_date)
+         VALUES ($1, $2, $3::date) RETURNING id`,
+        [poCode, supplierId, date || new Date().toISOString().split("T")[0]]
       );
 
       // Create purchase order item
@@ -325,7 +330,9 @@ export async function POST(request: Request) {
       const mvCountResult = await db.query<{ count: string }>(
         `SELECT COUNT(*)::text as count FROM stock_movements WHERE tenant_id = $1`, [tenantId]
       );
-      const mvCode = `MV-${String(Number(mvCountResult.rows[0].count) + 1).padStart(3, "0")}`;
+      const mvToday = new Date();
+      const mvDateStr = `${mvToday.getFullYear()}${String(mvToday.getMonth() + 1).padStart(2, "0")}${String(mvToday.getDate()).padStart(2, "0")}`;
+      const mvCode = `MV-${mvDateStr}-${String(Number(mvCountResult.rows[0].count) + 1).padStart(3, "0")}`;
       await db.query(
         `INSERT INTO stock_movements (movement_code, ingredient_id, movement_type, qty, unit, reference_code, created_by, tenant_id, movement_date)
          VALUES ($1, $2, 'in', $3, $4, $5, 'Purchase', $6, CURRENT_DATE)`,

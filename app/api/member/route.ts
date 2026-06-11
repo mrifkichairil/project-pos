@@ -159,3 +159,43 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to load members" }, { status: 500 });
   }
 }
+
+export async function POST(request: Request) {
+  const tenant = await requireTenantScope();
+  if ("error" in tenant) return tenant.error;
+
+  try {
+    const body = (await request.json()) as {
+      name?: string;
+      email?: string;
+      phone?: string;
+      location?: string;
+    };
+
+    const name = body.name?.trim();
+    const email = body.email?.trim();
+    const phone = body.phone?.trim();
+    const location = body.location?.trim();
+
+    if (!name || !email || !phone || !location) {
+      return NextResponse.json({ error: "Nama, email, telepon, dan lokasi wajib diisi" }, { status: 400 });
+    }
+
+    const result = await db.query<{ id: number }>(
+      `INSERT INTO members (name, email, phone, location, tier, tenant_id)
+       VALUES ($1, $2, $3, $4, 'Bronze', $5) RETURNING id`,
+      [name, email, phone, location, tenant.context.tenantId]
+    );
+
+    return NextResponse.json({
+      success: true,
+      member: { id: result.rows[0].id, name, email, phone, location, tier: "Bronze" },
+    }, { status: 201 });
+  } catch (err) {
+    const pgErr = err as { code?: string };
+    if (pgErr.code === "23505") {
+      return NextResponse.json({ error: "Email sudah terdaftar" }, { status: 409 });
+    }
+    return NextResponse.json({ error: "Failed to create member" }, { status: 500 });
+  }
+}
