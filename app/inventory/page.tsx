@@ -953,7 +953,7 @@ export default function InventoryPage() {
                   const selected = ingredientsData.find(i => i.name === val);
                   setNewPurchase({
                     ...newPurchase,
-                    item: val,
+                    item: val || "",
                     unit: selected?.unit || newPurchase.unit,
                     price: selected ? selected.price.toLocaleString("id-ID") : newPurchase.price,
                   });
@@ -1035,7 +1035,7 @@ export default function InventoryPage() {
                 <Select value={newMovement.item} onValueChange={(val) => {
                   if (!val) return;
                   const ing = ingredientsData.find(i => i.name === val);
-                  setNewMovement({ ...newMovement, item: val, unit: ing?.unit || newMovement.unit });
+                  setNewMovement({ ...newMovement, item: val || "", unit: ing?.unit || newMovement.unit });
                 }}>
                   <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Select ingredient..." />
